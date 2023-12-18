@@ -1,0 +1,37 @@
+---
+### METADATA
+title: Develop a RISC-V-based processor on FPGA and testing applications
+subtitle: Report for Computer Engineering Project (CO4041)
+description: Report for the first stage of the project
+author:
+  - Nguyễn Trần Phước Thành (1912059)
+date: This will be automated
+keywords: 
+- Computer Architechture
+- RISC-V
+- FPGA
+lang: en
+
+### DOCUMENT CONFIGURATION
+documentclass: scrbook
+classoption:
+  - a4paper
+  - titlepage
+  - twoside
+  - usegeometry
+  - parskip=full+
+geometry:
+  - pass
+numbersections: true
+colorlinks: true
+fontsize: 13pt
+
+### CITATION
+reference-section-title: References
+link-citations: true
+
+### FRONT MATTERS
+toc: true
+toc-depth: 4
+lof: true
+lot: true

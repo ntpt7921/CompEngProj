@@ -1,0 +1,34 @@
+---
+### BUILD CONFIGURATION
+from: markdown
+input-file:
+  - content/01_intro.md
+  - content/02_theoretical_basis.md
+  - content/03_implementation.md
+  - content/04_progress_and_plan.md
+metadata-file: metadata.yaml
+verbosity: WARNING
+fail-if-warnings: true
+# filters:
+
+### INCLUDES
+#include-in-header:
+include-before-body:
+  - content/00_a_declaration.tex
+  - content/00_b_acknowledgement.tex
+  - content/00_c_abstract.tex
+#include-after-body:
+resource-path:
+  - .
+
+### OPTION FOR GENERAL WRITER
+highlight-style: tango
+
+### OPTION FOR SPECIFIC WRITER
+#listings: true
+
+### CITATION
+citeproc: true
+bibliography:
+  - bib/bibliography.bib
+csl: bib/acm.csl
