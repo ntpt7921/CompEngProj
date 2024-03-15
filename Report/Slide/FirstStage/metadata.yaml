@@ -1,0 +1,27 @@
+---
+### METADATA
+title: Develop a RISC-V based processor on FPGA and testing applications
+subtitle: Results of first stage
+description: Report results of first stage of Computer Engineering Project
+author:
+- "Nguyễn Trần Phước Thành - 1912059"
+date: This will be automated
+subject: CPU, RISC-V, FPGA
+
+### SLIDE CONFIGURATION
+#
+# Main frame format
+aspectratio: 169
+navigation: horizontal
+
+# Content
+toc: true
+toc-title: Overview of contents
+section-titles: false
+
+# Theme
+# theme can be Berkeley, Luabeck or Frankfurt
+theme: "Frankfurt"
+# font theme can be professionalfonts, structurebold or structuresmallcapsserif
+fonttheme: "professionalfonts"
+fontsize: 10pt
