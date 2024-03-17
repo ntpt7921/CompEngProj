@@ -1,2 +1,5 @@
 EBAZ4205_Zynq_7010/
-WeeklyReport/
+Report/**/*.pdf
+.hdl_checker/
+note.md
+*.bkp
