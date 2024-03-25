@@ -1,4 +1,4 @@
-`define INVALID_INST 32'h0000_0000
+`define INVALID_INST    32'hC0001073
 
 `define OPCODE_OP       7'b0110011
 `define OPCODE_OP_IMM   7'b0010011
@@ -38,6 +38,7 @@ module Orchestrator #(
 
     // halt state and halt output
     reg halt_state;
+    reg [1:0] clk_till_halt; // count down clk cycle so all pipeline is clean
     
     always @(posedge clk) begin
         if (reset)
@@ -48,7 +49,16 @@ module Orchestrator #(
             halt_state <= halt_state;
     end
 
-    assign halt = halt_state;
+    always @(posedge clk) begin
+        if (reset)
+            clk_till_halt <= 2;
+        else if (halt_state == 1 && clk_till_halt != 0)
+            clk_till_halt <= clk_till_halt - 1;
+        else
+            clk_till_halt <= clk_till_halt;
+    end
+
+    assign halt = halt_state && (clk_till_halt == 0);
 
     /*
      * NOTE: stalling logic

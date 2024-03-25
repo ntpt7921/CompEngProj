@@ -27,7 +27,7 @@ module Hubris #(
     input reset,
     output halt
 );
-    
+
     // IF section
     // --------------------------------------------------------------------------------------------
     wire [WORD_WIDTH_IN_BIT-1:0] new_addr;
@@ -238,18 +238,28 @@ module Hubris #(
 
     // instatiate all the submodules
     // --------------------------------------------------------------------------------------------
-    InstMemory #(
+    UnifiedMemory #(
         .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
-        .MEMORY_DEPTH_IN_WORD(4096)
-    ) inst_memory_instance (
+        .INST_SIZE_IN_WORD(4096),
+        .DATA_SIZE_IN_WORD(4096)
+    ) unified_memory_instance (
         .clk(clk),
+        // for inst
         // address to bytes, misalignement allowed
         // always return 4 bytes of continuous memory from addr
-        .addr(inst_addr),
-        .write_enable(1'b0),
-        .write_width(`REGISTER_FILE_WRITE_WIDTH_WORD),
-        .write_data(0),
-        .read_data(if_inst)
+        .inst_addr(inst_addr), 
+        .inst_write_enable(1'b0),
+        .inst_write_width(`REGISTER_FILE_WRITE_WIDTH_WORD),
+        .inst_write_data(0),
+        .inst_read_data(if_inst),
+        // for data
+        // address to bytes, misalignement allowed
+        // always return 4 bytes of continuous memory from addr
+        .data_addr(ex_mem_pl_alu_result), 
+        .data_write_enable(ex_mem_pl_datamem_write_en),
+        .data_write_width(ex_mem_pl_datamem_write_width),
+        .data_write_data(ex_mem_pl_rs2_data),
+        .data_read_data(mem_read_data)
     );
 
     Orchestrator #(
@@ -333,21 +343,6 @@ module Hubris #(
         .write_width(ex_mem_pl_datamem_write_width),
         .funct3(ex_mem_pl_funct3),
         .read_data_ext(mem_read_data_ext)
-    );
-
-
-    DataMemory #(
-        .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
-        .MEMORY_DEPTH_IN_WORD(4096)
-    ) data_memory_instance (
-        .clk(clk),
-        // address to bytes, misalignement allowed
-        // always return 4 bytes of continuous memory from addr
-        .addr(ex_mem_pl_alu_result), 
-        .write_enable(ex_mem_pl_datamem_write_en),
-        .write_width(ex_mem_pl_datamem_write_width),
-        .write_data(ex_mem_pl_rs2_data),
-        .read_data(mem_read_data)
     );
 
 endmodule
