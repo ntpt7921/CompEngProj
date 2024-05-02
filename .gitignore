@@ -1,5 +1,6 @@
 EBAZ4205_Zynq_7010/
 Report/**/*.pdf
 .hdl_checker/
+.env/
 note.md
 *.bkp

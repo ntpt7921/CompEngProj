@@ -240,8 +240,8 @@ module Hubris #(
     // --------------------------------------------------------------------------------------------
     UnifiedMemory #(
         .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
-        .INST_SIZE_IN_WORD(4096),
-        .DATA_SIZE_IN_WORD(4096)
+        .INST_SIZE_IN_WORD(524288), // 2MiB
+        .DATA_SIZE_IN_WORD(524288)  // 2MiB
     ) unified_memory_instance (
         .clk(clk),
         // for inst

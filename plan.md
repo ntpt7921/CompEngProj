@@ -52,13 +52,13 @@ Requirements:
         - [x] RV32IMAFD_Zicsr_Zifence_Zicntr_Zihpm as final target
         - [x] RV32I for now, AMFD_Zicsr_Zifence_Zicntr_Zihpm extension later
     - [ ] Privileged architecture (Vol.2)
-- [ ] Design 
-    - [ ] Take ideas from existing design (Pico, Sordor, Rocket)
+- [x] Design 
+    - [x] Take ideas from existing design (Pico, Sordor, Rocket)
     - [x] Make some decision
         - Pipeline 
         - Single issue, in-order for now (need it quick)
         - Complete the core first, memory subsystem for later
-- [ ] Implement 
+- [x] Implement 
     - Do each block (detail available after design)
 - [ ] Validation
     - Do each block (detail available after design)
