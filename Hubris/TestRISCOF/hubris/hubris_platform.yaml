@@ -1,0 +1,10 @@
+reset:
+  label: reset_vector
+nmi:
+  label: nmi_vector
+mtime:
+  implemented: false
+  address: 0x0000
+mtimecmp:
+  implemented: false
+  address: 0x0000
