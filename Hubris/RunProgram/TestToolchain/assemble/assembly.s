@@ -1,3 +1,0 @@
-assemby:
-    nop
-    unimp

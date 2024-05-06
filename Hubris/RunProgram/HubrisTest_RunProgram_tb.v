@@ -95,23 +95,39 @@ module HubrisTest_RunProgram_tb();
         end
     endtask 
 
-    task get_final_state_log_file_name;
+    task get_final_state_regstat_file_name;
         output `STRING file_name_out;
         output reg file_name_found;
 
         begin 
-            if (!$value$plusargs("log=%s", file_name_out)) begin
-                $display("No log file name found");
+            if (!$value$plusargs("regstat=%s", file_name_out)) begin
+                $display("No regstat log file name found");
                 file_name_found = 0;
             end
             else begin
-                $display("Log file name: %s", file_name_out);
+                $display("Regstat log file name: %s", file_name_out);
                 file_name_found = 1;
             end
         end
     endtask
 
-    task write_final_state_into_log_file;
+    task get_final_state_memdump_file_name;
+        output `STRING file_name_out;
+        output reg file_name_found;
+
+        begin 
+            if (!$value$plusargs("memdump=%s", file_name_out)) begin
+                $display("No memory dump file name found");
+                file_name_found = 0;
+            end
+            else begin
+                $display("Memory dump file name: %s", file_name_out);
+                file_name_found = 1;
+            end
+        end
+    endtask
+
+    task write_regstat_to_file;
         input `STRING file_name;
         integer i;
         integer memory_byte_count;
@@ -131,18 +147,36 @@ module HubrisTest_RunProgram_tb();
                     for (i = 0; i < 31; i = i + 1)
                         $fwrite(fd, "\"x%0d\":%0d,", i, dut.register_file_instance.regfile[i]);
                     $fwrite(fd, "\"x%0d\":%0d", i, dut.register_file_instance.regfile[31]);
-                $fwrite(fd, "},");
-
-                // TODO: change this to dump data mem into a separate file
-
-                $fwrite(fd, "\"datamem\":{");
-                    for (i = 0; i < memory_byte_count - 1; i = i + 1)
-                        $fwrite(fd, "\"%0d\":%0d,", i, dut.unified_memory_instance.data_memory_instance.mem[i]);
-                    $fwrite(fd, "\"%0d\":%0d", i, dut.unified_memory_instance.data_memory_instance.mem[memory_byte_count - 1]);
                 $fwrite(fd, "}");
-
             $fwrite(fd, "}");
             $fclose(fd);
+        end
+    endtask
+
+    task dump_memory_to_file;
+        input `STRING file_name;
+        integer i;
+        integer memory_byte_count;
+        integer fd;
+        reg [31:0] temp;
+
+        // NOTE: dump data memory to binary file
+        // each fwrite with %u format write a 32 bit value, so read 4 memory cell
+        // if the memory is not a multiple of 4 bytes in size, bad thing happens
+
+        begin 
+            memory_byte_count = dut.unified_memory_instance.DATA_SIZE_IN_BYTE;
+
+            fd = $fopen(file_name, "wb");
+            for (i = 0; i < memory_byte_count; i = i + 4) begin
+                temp =  {
+                    dut.unified_memory_instance.data_memory_instance.mem[i+3],
+                    dut.unified_memory_instance.data_memory_instance.mem[i+2],
+                    dut.unified_memory_instance.data_memory_instance.mem[i+1],
+                    dut.unified_memory_instance.data_memory_instance.mem[i]
+                    };
+                $fwrite(fd, "%u", temp);
+            end
         end
     endtask
 
@@ -155,9 +189,14 @@ module HubrisTest_RunProgram_tb();
         reg file_name_found;
 
         begin 
-            get_final_state_log_file_name(file_name, file_name_found);
+            get_final_state_regstat_file_name(file_name, file_name_found);
             if (file_name_found) begin 
-                write_final_state_into_log_file(file_name);
+                write_regstat_to_file(file_name);
+            end
+
+            get_final_state_memdump_file_name(file_name, file_name_found);
+            if (file_name_found) begin 
+                dump_memory_to_file(file_name);
             end
         end
     endtask
@@ -175,9 +214,18 @@ module HubrisTest_RunProgram_tb();
     always @(posedge clk) begin 
         if (is_running)
             clk_count <= clk_count + 1;
+        if (clk_count > `EXECUTION_CLK_LIMIT) begin
+            $display("Execution clk limit reached: %0d", `EXECUTION_CLK_LIMIT);
+            $finish;
+        end
     end
 
     initial begin 
+        if ($test$plusargs("sigdebug")) begin
+            $dumpfile("signal_debug.vcd");
+            $dumpvars(0, HubrisTest_RunProgram_tb);
+        end
+
         // $monitor("t=%0t clk=%1b reset=%1b", $time, clk, reset);
         zero_memory();
         load_program();
@@ -194,7 +242,6 @@ module HubrisTest_RunProgram_tb();
         print_statistics();
 
         $finish;
-
     end
 
     initial begin
