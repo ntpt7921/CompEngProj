@@ -8,6 +8,7 @@
 * 1 synchronous/asynchronous write with specified width (1, 2 or 4 bytes)
 *   - when write smaller than register's size, 0-fill all upper bits
 *   - written value is bypassed to the read output in case read_addr = write_addr
+* Register x0 is special, its value when read is always 0
 */
 
 module RegisterFile #(
@@ -63,6 +64,7 @@ module RegisterFile #(
 
     end
 
+    // reset and write part
     integer i;
     always @(posedge clk) begin 
 
@@ -72,7 +74,10 @@ module RegisterFile #(
             end
         end
         else if (write_enable)
-            regfile[write_reg_addr] = masked_write_data;
+            if (write_reg_addr != 0) // not x0
+                regfile[write_reg_addr] <= masked_write_data;
+
+        regfile[0] <= 0;    // make sure x0 is always 0
 
     end
 
@@ -80,12 +85,18 @@ module RegisterFile #(
     always @(*) begin
 
         if (read_reg1_addr == write_reg_addr && write_enable)
-            read_reg1_data = masked_write_data;
+            if (read_reg1_addr != 0)
+                read_reg1_data = masked_write_data;
+            else
+                read_reg1_data = 0;
         else
             read_reg1_data = regfile[read_reg1_addr];
 
         if (read_reg2_addr == write_reg_addr && write_enable)
-            read_reg2_data = masked_write_data;
+            if (read_reg2_addr != 0)
+                read_reg2_data = masked_write_data;
+            else
+                read_reg2_data = 0;
         else
             read_reg2_data = regfile[read_reg2_addr];
 

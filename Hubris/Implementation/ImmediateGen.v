@@ -13,7 +13,7 @@ module ImmediateGen (
     output reg [31:0] immediate
 );
     
-    wire [7:0] opcode = inst[7:0];
+    wire [6:0] opcode = inst[6:0];
 
     always @(*) begin
 

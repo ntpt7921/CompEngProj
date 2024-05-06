@@ -163,8 +163,8 @@ module Hubris #(
     reg [WORD_WIDTH_IN_BIT-1:0] ex_mem_pl_ex_calculated_pc;
 
     always @(posedge clk) begin 
-        ex_mem_pl_funct3 = ex_funct3;
-        ex_mem_pl_imm = id_ex_pl_imm;
+        ex_mem_pl_funct3 <= ex_funct3;
+        ex_mem_pl_imm <= id_ex_pl_imm;
         // control signal generation
         ex_mem_pl_regfile_write_en <= id_ex_pl_regfile_write_en;
         ex_mem_pl_regfile_write_width <= id_ex_pl_regfile_write_width;
@@ -201,7 +201,7 @@ module Hubris #(
     reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_ex_calculated_pc;
 
     always @(posedge clk) begin 
-        mem_wb_pl_imm = ex_mem_pl_imm;
+        mem_wb_pl_imm <= ex_mem_pl_imm;
         // data read from mem
         mem_wb_pl_read_data_ext <= mem_read_data_ext;
         // control signal generation

@@ -31,7 +31,7 @@ module Orchestrator #(
 
     wire [4:0] rd_curr_inst = curr_inst[11:7];
     wire [4:0] rd_prev_inst = prev_inst[11:7];
-    
+
     wire [4:0] rs1_next_inst = next_inst[19:15];
     wire [4:0] rs2_next_inst = next_inst[24:20];
 
@@ -39,7 +39,7 @@ module Orchestrator #(
     // halt state and halt output
     reg halt_state;
     reg [1:0] clk_till_halt; // count down clk cycle so all pipeline is clean
-    
+
     always @(posedge clk) begin
         if (reset)
             halt_state <= 0;
@@ -61,52 +61,80 @@ module Orchestrator #(
     assign halt = halt_state && (clk_till_halt == 0);
 
     /*
-     * NOTE: stalling logic
-     * * Load:
-     *  - stall for 2 cycle when encountering load instructions
-     *  - implement by checking curr_inst and prev_inst
-     * * Branch:
-     *  - stall for 1 cycle
-     *  - implement by checking curr_inst
-     * * Jump:
-     *  - stall for 2 cycle when encountering jump instructions
-     *  - implement by checking curr_inst and prev_inst
-     * * ALU:
-     *  - stall when rd_curr_inst == rs1_next_inst | rs2_next_inst 
-     *            OR rd_prev_inst == rs1_next_inst | rs2_next_inst
+    * NOTE: stalling logic
+    * * Load:
+    *      - stall for 2 cycle after encountering load instructions
+    *      - implement by checking curr_inst and prev_inst
+    * * Branch:
+    *      - stall for 1 cycle after encountering load instructions
+    *      - implement by checking curr_inst
+    * * Jump:
+    *      - stall for 2 cycle after encountering jump instructions
+    *      - implement by checking curr_inst and prev_inst
+    * * Change Rd inst (OP, OP_IMM, LUI, AUIPC):
+    *      - if next_inst uses dependent rs1/rs2 (OP/OP_IMM/JALR/BRANCH/LOAD/STORE)
+    *      - then stall when 
+    *               rd_curr_inst == rs1_next_inst | rs2_next_inst (rd_curr_inst != x0)
+    *            OR rd_prev_inst == rs1_next_inst | rs2_next_inst (rd_prev_inst != x0)
     */
 
     // logic for stall_id_if_pl signal
     wire pl_load_stall = (opcode_curr_inst == `OPCODE_LOAD) || (opcode_prev_inst == `OPCODE_LOAD);
     wire pl_branch_stall = (opcode_curr_inst == `OPCODE_BRANCH);
     wire pl_jump_stall = (opcode_curr_inst == `OPCODE_JAL) || (opcode_curr_inst == `OPCODE_JALR);
-    reg pl_alu_stall;
-    
-    function is_alu_opcode;
-        input opcode;
+    reg pl_rd_dep_stall;
+
+    function is_change_rd_inst;
+        input [6:0] opcode;
         begin 
-            is_alu_opcode = (opcode_curr_inst == `OPCODE_OP 
-                            || opcode_curr_inst == `OPCODE_LUI 
-                            || opcode_curr_inst == `OPCODE_AUIPC);
+            is_change_rd_inst = (opcode == `OPCODE_OP 
+                            || opcode == `OPCODE_OP_IMM 
+                            || opcode == `OPCODE_LUI 
+                            || opcode == `OPCODE_AUIPC);
         end
     endfunction
-    
+
+    function have_rd_dep_need_stall;
+        input [6:0] sus_opcode;         // sussy baka opcode
+        input [4:0] sus_rd;             // similarly sussy rd
+        input [6:0] next_opcode;
+        input [4:0] next_rs1;
+        input [4:0] next_rs2;
+
+        begin
+            have_rd_dep_need_stall = 0;
+
+            if (is_change_rd_inst(sus_opcode)) begin
+                case (next_opcode)
+
+                    `OPCODE_OP, `OPCODE_BRANCH, `OPCODE_STORE: // use both rs1 and rs2
+                        if (sus_rd != 0 && (sus_rd == next_rs1 || sus_rd == next_rs2))
+                            have_rd_dep_need_stall = 1;
+
+                    `OPCODE_OP_IMM, `OPCODE_JALR, `OPCODE_LOAD: // use only rs1
+                        if (sus_rd != 0 && sus_rd == next_rs1)
+                            have_rd_dep_need_stall = 1;
+
+                    default: have_rd_dep_need_stall = 0;  
+
+                endcase
+            end
+        end
+    endfunction
+
     always @(*) begin 
-        pl_alu_stall = 0;
+        pl_rd_dep_stall = 0;
 
-        if (is_alu_opcode(opcode_curr_inst) 
-            && is_alu_opcode(opcode_next_inst) 
-            && (rd_curr_inst == rs1_next_inst || rd_curr_inst == rs2_next_inst))
-                pl_alu_stall = 1;
-
-        if (is_alu_opcode(opcode_prev_inst) 
-            && is_alu_opcode(opcode_prev_inst) 
-            && (rd_prev_inst == rs1_next_inst || rd_prev_inst == rs2_next_inst))
-                pl_alu_stall = 1;
+        pl_rd_dep_stall = have_rd_dep_need_stall(
+                opcode_curr_inst, rd_curr_inst, 
+                opcode_next_inst, rs1_next_inst, rs2_next_inst)
+            || have_rd_dep_need_stall(
+                opcode_prev_inst, rd_prev_inst, 
+                opcode_next_inst, rs1_next_inst, rs2_next_inst);
     end
-    
+
     assign stall_id_if_pl = halt_state 
-        || pl_jump_stall || pl_load_stall || pl_alu_stall || pl_branch_stall; 
+        || pl_jump_stall || pl_load_stall || pl_rd_dep_stall || pl_branch_stall; 
 
     // logic for stall_pc_increment signal
     assign stall_pc_increment = stall_id_if_pl;

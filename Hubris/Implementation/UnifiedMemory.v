@@ -21,7 +21,7 @@ module UnifiedMemory #(
     parameter INST_SIZE_IN_BYTE = INST_SIZE_IN_WORD * 4,
     parameter INST_SIZE_ADDR_BIT_SIZE = $clog2(INST_SIZE_IN_BYTE),
     parameter DATA_SIZE_IN_WORD = 4096,
-    parameter DATA_SIZE_IN_BYTE = INST_SIZE_IN_WORD * 4,
+    parameter DATA_SIZE_IN_BYTE = DATA_SIZE_IN_WORD * 4,
     parameter DATA_SIZE_ADDR_BIT_SIZE = $clog2(DATA_SIZE_IN_BYTE)
 )(
     input clk,

@@ -75,11 +75,11 @@ module CtrlSignalGen (
     output reg add_4_pc
 );
 
-    wire [7:0] opcode = inst[7:0];
+    wire [6:0] opcode = inst[6:0];
     wire [2:0] funct3 = inst[14:12];
     wire funct7_important = inst[30];
 
-    function alu_cmd_from_funct3_funct7;
+    function [3:0] alu_cmd_from_funct3_funct7;
         input [2:0] funct3;
         input funct7;
         begin 
@@ -107,19 +107,19 @@ module CtrlSignalGen (
         end
     endfunction
 
-    function load_store_width_or_type_from_funct3;
+    function [3:0] load_store_width_or_type_from_funct3;
         input [2:0] funct3;
         begin 
             load_store_width_or_type_from_funct3 = 4'bx;
             case (funct3)
-                `FUNCT3_MEM_LB: load_store_width_or_type_from_funct3 = 1;
-                `FUNCT3_MEM_LH: load_store_width_or_type_from_funct3 = 2;
-                `FUNCT3_MEM_LW: load_store_width_or_type_from_funct3 = 4;
-                `FUNCT3_MEM_LBU: load_store_width_or_type_from_funct3 = 1;
-                `FUNCT3_MEM_LHU: load_store_width_or_type_from_funct3 = 2;
-                `FUNCT3_MEM_SB: load_store_width_or_type_from_funct3 = 1;
-                `FUNCT3_MEM_SH: load_store_width_or_type_from_funct3 = 2;
-                `FUNCT3_MEM_SW: load_store_width_or_type_from_funct3 = 4;
+                `FUNCT3_MEM_LB: load_store_width_or_type_from_funct3 = 4'd1;
+                `FUNCT3_MEM_LH: load_store_width_or_type_from_funct3 = 4'd2;
+                `FUNCT3_MEM_LW: load_store_width_or_type_from_funct3 = 4'd4;
+                `FUNCT3_MEM_LBU: load_store_width_or_type_from_funct3 = 4'd1;
+                `FUNCT3_MEM_LHU: load_store_width_or_type_from_funct3 = 4'd2;
+                `FUNCT3_MEM_SB: load_store_width_or_type_from_funct3 = 4'd1;
+                `FUNCT3_MEM_SH: load_store_width_or_type_from_funct3 = 4'd2;
+                `FUNCT3_MEM_SW: load_store_width_or_type_from_funct3 = 4'd4;
                 default: load_store_width_or_type_from_funct3 = 4'bx;
             endcase
         end
