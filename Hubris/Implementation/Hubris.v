@@ -33,22 +33,23 @@ module Hubris #(
     wire [WORD_WIDTH_IN_BIT-1:0] new_addr;
     wire chg_addr;
     wire pc_stall_write;
+    wire final_pc_stall_write = (chg_addr) ? 0 : pc_stall_write; // don't stall pc write if addr need change
     reg [WORD_WIDTH_IN_BIT-1:0] pc;
 
     always @(posedge clk) begin 
         if (reset)
             pc <= INST_START_ADDR;
-        else if (pc_stall_write)
+        else if (final_pc_stall_write)
             pc <= pc;
         else begin
             if (chg_addr)
-                pc <= new_addr + 4;
+                pc <= new_addr;
             else
                 pc <= pc + 4;
         end
     end
 
-    wire [WORD_WIDTH_IN_BIT-1:0] inst_addr = (chg_addr) ? new_addr : pc; // address of next instruction
+    wire [WORD_WIDTH_IN_BIT-1:0] inst_addr = pc; // address of next instruction
     wire [WORD_WIDTH_IN_BIT-1:0] if_inst; // instruction read from InstMemory
 
     // IF-ID pipeline
@@ -238,6 +239,28 @@ module Hubris #(
 
     // instatiate all the submodules
     // --------------------------------------------------------------------------------------------
+
+    // using the flat addressing NewUnifiedMemory
+    NewUnifiedMemory #(
+        .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
+        .MEMORY_DEPTH_IN_WORD(1048576) // 4MiB
+    ) unified_memory_instance (
+        .clk(clk),
+        // read
+        // read port 0 will be inst, port 1 will be general purpose
+        .addr_read_0(inst_addr),
+        .addr_read_1(ex_mem_pl_alu_result),
+        .read_data_0(if_inst),
+        .read_data_1(mem_read_data),
+        // write
+        .write_en(ex_mem_pl_datamem_write_en), // active high
+        .write_width(ex_mem_pl_datamem_write_width),
+        .addr_write(ex_mem_pl_alu_result),
+        .write_data(ex_mem_pl_rs2_data)
+    );
+
+    /*
+    // using the segmented addressing old UnifiedMemory
     UnifiedMemory #(
         .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
         .INST_SIZE_IN_WORD(524288), // 2MiB
@@ -261,6 +284,7 @@ module Hubris #(
         .data_write_data(ex_mem_pl_rs2_data),
         .data_read_data(mem_read_data)
     );
+    */
 
     Orchestrator #(
         .INST_WIDTH_IN_BIT(WORD_WIDTH_IN_BIT)

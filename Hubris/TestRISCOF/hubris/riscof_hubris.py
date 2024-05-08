@@ -79,7 +79,7 @@ class hubris(pluginTemplate):
 
         # add more utility snippets here
         self.extract_text_cmd = 'riscv{0}-unknown-elf-objcopy \
-            -O verilog --only-section=.text* \
+            -O verilog --only-section=.text* --only-section=.data*\
             {1} {2}'
 
         self.sig_gen_exe = os.path.join(self.pluginpath, "env/generateSignature.py")
@@ -140,7 +140,7 @@ class hubris(pluginTemplate):
             elf = 'my.elf'
 
             # name of the text section binary extract from elf file
-            text = 'my.text'
+            text = 'my.load'
 
             # name of the log file for simulation
             logfile = 'my.regstat.json'

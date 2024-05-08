@@ -58,7 +58,6 @@
 `define ALU_SRC_IMM 1'b0
 `define ALU_SRC_RS2 1'b1
 
-
 module CtrlSignalGen (
     input [31:0] inst,
     // ALU control
@@ -82,24 +81,27 @@ module CtrlSignalGen (
     function [3:0] alu_cmd_from_funct3_funct7;
         input [2:0] funct3;
         input funct7;
+        input is_imm_inst; // boolean
         begin 
             alu_cmd_from_funct3_funct7 = 4'bx;
             case (funct3)
 
-                `FUNCT3_OP_ADD:  alu_cmd_from_funct3_funct7 = `ALU_CMD_ADD;
+                `FUNCT3_OP_ADD, `FUNCT3_OP_SUB:
+                    if (!is_imm_inst && funct7 == 1'b1)
+                        alu_cmd_from_funct3_funct7 = `ALU_CMD_SUB; 
+                    else
+                        alu_cmd_from_funct3_funct7 = `ALU_CMD_ADD;
                 `FUNCT3_OP_SLT:  alu_cmd_from_funct3_funct7 = `ALU_CMD_SLT;
                 `FUNCT3_OP_SLTU: alu_cmd_from_funct3_funct7 = `ALU_CMD_SLTU;
                 `FUNCT3_OP_AND:  alu_cmd_from_funct3_funct7 = `ALU_CMD_AND;
                 `FUNCT3_OP_OR:   alu_cmd_from_funct3_funct7 = `ALU_CMD_OR;
                 `FUNCT3_OP_XOR:  alu_cmd_from_funct3_funct7 = `ALU_CMD_XOR;
                 `FUNCT3_OP_SLL:  alu_cmd_from_funct3_funct7 = `ALU_CMD_SLL;
-                `FUNCT3_OP_SRL:  alu_cmd_from_funct3_funct7 = `ALU_CMD_SRL;
-                `FUNCT3_OP_SUB: 
-                    if (funct7 == 1'b1)
-                        alu_cmd_from_funct3_funct7 = `ALU_CMD_SUB; 
-                `FUNCT3_OP_SRA:
+                `FUNCT3_OP_SRL, `FUNCT3_OP_SRA:
                     if (funct7 == 1'b1)
                         alu_cmd_from_funct3_funct7 = `ALU_CMD_SRA;
+                    else
+                        alu_cmd_from_funct3_funct7 = `ALU_CMD_SRL;
 
                 default: 
                     alu_cmd_from_funct3_funct7 = 4'bx;
@@ -112,14 +114,14 @@ module CtrlSignalGen (
         begin 
             load_store_width_or_type_from_funct3 = 4'bx;
             case (funct3)
-                `FUNCT3_MEM_LB: load_store_width_or_type_from_funct3 = 4'd1;
-                `FUNCT3_MEM_LH: load_store_width_or_type_from_funct3 = 4'd2;
-                `FUNCT3_MEM_LW: load_store_width_or_type_from_funct3 = 4'd4;
-                `FUNCT3_MEM_LBU: load_store_width_or_type_from_funct3 = 4'd1;
-                `FUNCT3_MEM_LHU: load_store_width_or_type_from_funct3 = 4'd2;
-                `FUNCT3_MEM_SB: load_store_width_or_type_from_funct3 = 4'd1;
-                `FUNCT3_MEM_SH: load_store_width_or_type_from_funct3 = 4'd2;
-                `FUNCT3_MEM_SW: load_store_width_or_type_from_funct3 = 4'd4;
+                `FUNCT3_MEM_LB: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_BYTE;
+                `FUNCT3_MEM_LH: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_HALF;
+                `FUNCT3_MEM_LW: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_WORD;
+                `FUNCT3_MEM_LBU: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_BYTE;
+                `FUNCT3_MEM_LHU: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_HALF;
+                `FUNCT3_MEM_SB: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_BYTE;
+                `FUNCT3_MEM_SH: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_HALF;
+                `FUNCT3_MEM_SW: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_WORD;
                 default: load_store_width_or_type_from_funct3 = 4'bx;
             endcase
         end
@@ -131,7 +133,7 @@ module CtrlSignalGen (
 
             `OPCODE_OP: begin 
                 // ALU control
-                alu_cmd = alu_cmd_from_funct3_funct7(funct3, funct7_important);
+                alu_cmd = alu_cmd_from_funct3_funct7(funct3, funct7_important, 0);
                 alu_src = `ALU_SRC_RS2;
                 // RegisterFile control
                 regfile_write_en = 1;
@@ -146,7 +148,7 @@ module CtrlSignalGen (
 
             `OPCODE_OP_IMM: begin
                 // ALU control
-                alu_cmd = alu_cmd_from_funct3_funct7(funct3, funct7_important);
+                alu_cmd = alu_cmd_from_funct3_funct7(funct3, funct7_important, 1);
                 alu_src = `ALU_SRC_IMM;
                 // RegisterFile control
                 regfile_write_en = 1;

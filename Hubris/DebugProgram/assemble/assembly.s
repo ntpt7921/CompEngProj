@@ -1,16 +1,17 @@
 .section .text
-.equ DATA_START, 0x200000
+    .globl entry_point; 
+    entry_point:
 
-addi x0, x0, 1
-addi x1, x0, 1 
-addi x2, x1, 1 
-addi x3, x2, 1 
-addi x4, x3, 1 
-
-li a0, DATA_START
-sw  x1, 0(a0)
-sw  x2, 4(a0)
-sw  x3, 8(a0)
-sw  x4, 12(a0)
+la a0, data_section_start
+lb t1, 0(a0)
+sw t1, 8(a0)
+lh t2, 0(a0)
+sw t2, 12(a0)
 
 unimp
+
+#----------------------------------
+.section .data
+    data_section_start:
+
+.fill 8, 1, 0xFEFEFEFE

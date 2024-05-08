@@ -44,13 +44,13 @@ module ALU #(
                 out = rs1 ^ rs2;
 
             `ALU_CMD_SLL:
-                out = rs1 << rs2; // add 0 to new bit
+                out = rs1 << rs2[4:0]; // add 0 to new bit, use 5 last bits of rs2
 
             `ALU_CMD_SRL:
-                out = rs1 >> rs2; // add 0 to new bit
+                out = rs1 >> rs2[4:0]; // add 0 to new bit, use 5 last bits of rs2
 
             `ALU_CMD_SRA:
-                out = rs1 >>> rs2; // do sign extension
+                out = $signed(rs1) >>> rs2[4:0]; // do sign extension, use 5 last bits of rs2
             
             default: out = 32'bx;
 

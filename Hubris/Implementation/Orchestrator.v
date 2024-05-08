@@ -66,8 +66,8 @@ module Orchestrator #(
     *      - stall for 2 cycle after encountering load instructions
     *      - implement by checking curr_inst and prev_inst
     * * Branch:
-    *      - stall for 1 cycle after encountering load instructions
-    *      - implement by checking curr_inst
+    *      - stall for 2 cycle after encountering branch instructions
+    *      - implement by checking curr_inst and prev_inst
     * * Jump:
     *      - stall for 2 cycle after encountering jump instructions
     *      - implement by checking curr_inst and prev_inst
@@ -80,8 +80,9 @@ module Orchestrator #(
 
     // logic for stall_id_if_pl signal
     wire pl_load_stall = (opcode_curr_inst == `OPCODE_LOAD) || (opcode_prev_inst == `OPCODE_LOAD);
-    wire pl_branch_stall = (opcode_curr_inst == `OPCODE_BRANCH);
-    wire pl_jump_stall = (opcode_curr_inst == `OPCODE_JAL) || (opcode_curr_inst == `OPCODE_JALR);
+    wire pl_branch_stall = (opcode_curr_inst == `OPCODE_BRANCH) || (opcode_prev_inst == `OPCODE_BRANCH);
+    wire pl_jump_stall = (opcode_curr_inst == `OPCODE_JAL) || (opcode_curr_inst == `OPCODE_JALR)
+                      || (opcode_prev_inst == `OPCODE_JAL) || (opcode_prev_inst == `OPCODE_JALR);
     reg pl_rd_dep_stall;
 
     function is_change_rd_inst;
@@ -137,6 +138,6 @@ module Orchestrator #(
         || pl_jump_stall || pl_load_stall || pl_rd_dep_stall || pl_branch_stall; 
 
     // logic for stall_pc_increment signal
-    assign stall_pc_increment = stall_id_if_pl;
+    assign stall_pc_increment = stall_id_if_pl; 
 
 endmodule

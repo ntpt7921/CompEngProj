@@ -31,38 +31,6 @@ module RegisterFile #(
 );
 
     reg [REG_WIDTH_IN_BIT-1:0] regfile [0:REG_NUMBER-1];
-    reg [REG_WIDTH_IN_BIT-1:0] masked_write_data;
-
-    // writing part
-    always @(*) begin
-        
-        masked_write_data = 0;
-
-        case (write_width)
-
-            `REGISTER_FILE_WRITE_WIDTH_BYTE:
-                masked_write_data[7:0] = write_data[7:0];
-
-            `REGISTER_FILE_WRITE_WIDTH_HALF:
-                begin 
-                masked_write_data[7:0] = write_data[7:0];
-                masked_write_data[15:8] = write_data[15:8];
-                end
-
-            `REGISTER_FILE_WRITE_WIDTH_WORD:
-                begin 
-                masked_write_data[7:0] = write_data[7:0];
-                masked_write_data[15:8] = write_data[15:8];
-                masked_write_data[23:16] = write_data[23:16];
-                masked_write_data[31:24] = write_data[31:24];
-                end
-
-            default:
-                masked_write_data = {REG_WIDTH_IN_BIT {1'bx}};
-
-        endcase
-
-    end
 
     // reset and write part
     integer i;
@@ -75,7 +43,7 @@ module RegisterFile #(
         end
         else if (write_enable)
             if (write_reg_addr != 0) // not x0
-                regfile[write_reg_addr] <= masked_write_data;
+                regfile[write_reg_addr] <= write_data;
 
         regfile[0] <= 0;    // make sure x0 is always 0
 
@@ -86,7 +54,7 @@ module RegisterFile #(
 
         if (read_reg1_addr == write_reg_addr && write_enable)
             if (read_reg1_addr != 0)
-                read_reg1_data = masked_write_data;
+                read_reg1_data = write_data;
             else
                 read_reg1_data = 0;
         else
@@ -94,7 +62,7 @@ module RegisterFile #(
 
         if (read_reg2_addr == write_reg_addr && write_enable)
             if (read_reg2_addr != 0)
-                read_reg2_data = masked_write_data;
+                read_reg2_data = write_data;
             else
                 read_reg2_data = 0;
         else
