@@ -25,7 +25,11 @@ module Hubris #(
 )(
     input clk,
     input reset,
-    output halt
+    output halt,
+    // external output io
+    input io_output_en,
+    output [7:0] io_output_data,
+    output [31:0] io_buffer_size_avai
 );
 
     // IF section
@@ -246,6 +250,7 @@ module Hubris #(
         .MEMORY_DEPTH_IN_WORD(1048576) // 4MiB
     ) unified_memory_instance (
         .clk(clk),
+        .reset(reset),
         // read
         // read port 0 will be inst, port 1 will be general purpose
         .addr_read_0(inst_addr),
@@ -256,7 +261,11 @@ module Hubris #(
         .write_en(ex_mem_pl_datamem_write_en), // active high
         .write_width(ex_mem_pl_datamem_write_width),
         .addr_write(ex_mem_pl_alu_result),
-        .write_data(ex_mem_pl_rs2_data)
+        .write_data(ex_mem_pl_rs2_data),
+        // external output io
+        .io_output_en(io_output_en),
+        .io_output_data(io_output_data),
+        .io_buffer_size_avai(io_buffer_size_avai)
     );
 
     /*

@@ -5,6 +5,10 @@ module HubrisTest_RunProgram_tb();
     reg clk;
     reg reset;
     wire halt;
+    // external output io
+    reg io_output_en;
+    wire [7:0] io_output_data;
+    wire [31:0] io_buffer_size_avai;
 
     Hubris #(
         .REG_NUMBER(32),
@@ -12,7 +16,11 @@ module HubrisTest_RunProgram_tb();
     ) dut (
         .clk(clk),
         .reset(reset),
-        .halt(halt)
+        .halt(halt),
+        // io 
+        .io_output_en(io_output_en),
+        .io_output_data(io_output_data),
+        .io_buffer_size_avai(io_buffer_size_avai)
     );
 
     task get_binary_file_name;
@@ -230,6 +238,7 @@ module HubrisTest_RunProgram_tb();
         end
     endtask
 
+    // count clock cycle
     reg is_running;
     integer clk_count;
 
@@ -241,6 +250,15 @@ module HubrisTest_RunProgram_tb();
             report_hubris_internal_state();
             $finish;
         end
+    end
+
+    // read output io buffer and print content
+    always @(*)
+        io_output_en = (io_buffer_size_avai > 0);
+
+    always @(posedge clk) begin 
+        if (io_buffer_size_avai > 0)
+            $write("%c", io_output_data);
     end
 
     initial begin 
