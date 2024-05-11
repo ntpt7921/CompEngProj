@@ -4,4 +4,4 @@ hart0:
   User_Spec_Version: '2.3'
   hw_data_misaligned_support: False
   supported_xlen: [32]
-  physical_addr_sz: 24 
+  physical_addr_sz: 22

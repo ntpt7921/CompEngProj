@@ -9,6 +9,7 @@
 `define OPCODE_BRANCH   7'b1100011
 `define OPCODE_LOAD     7'b0000011
 `define OPCODE_STORE    7'b0100011
+`define OPCODE_SYSTEM   7'b1110011
 
 module Orchestrator #(
     parameter INST_WIDTH_IN_BIT = 32
@@ -71,8 +72,8 @@ module Orchestrator #(
     * * Jump:
     *      - stall for 2 cycle after encountering jump instructions
     *      - implement by checking curr_inst and prev_inst
-    * * Change Rd inst (OP, OP_IMM, LUI, AUIPC):
-    *      - if next_inst uses dependent rs1/rs2 (OP/OP_IMM/JALR/BRANCH/LOAD/STORE)
+    * * Change Rd inst (OP, OP_IMM, LUI, AUIPC, SYSTEM):
+    *      - if next_inst uses dependent rs1/rs2 (OP/OP_IMM/JALR/BRANCH/LOAD/STORE/SYSTEM)
     *      - then stall when 
     *               rd_curr_inst == rs1_next_inst | rs2_next_inst (rd_curr_inst != x0)
     *            OR rd_prev_inst == rs1_next_inst | rs2_next_inst (rd_prev_inst != x0)
@@ -91,7 +92,8 @@ module Orchestrator #(
             is_change_rd_inst = (opcode == `OPCODE_OP 
                             || opcode == `OPCODE_OP_IMM 
                             || opcode == `OPCODE_LUI 
-                            || opcode == `OPCODE_AUIPC);
+                            || opcode == `OPCODE_AUIPC
+                            || opcode == `OPCODE_SYSTEM);
         end
     endfunction
 
@@ -112,7 +114,7 @@ module Orchestrator #(
                         if (sus_rd != 0 && (sus_rd == next_rs1 || sus_rd == next_rs2))
                             have_rd_dep_need_stall = 1;
 
-                    `OPCODE_OP_IMM, `OPCODE_JALR, `OPCODE_LOAD: // use only rs1
+                    `OPCODE_OP_IMM, `OPCODE_JALR, `OPCODE_LOAD, `OPCODE_SYSTEM: // use only rs1
                         if (sus_rd != 0 && sus_rd == next_rs1)
                             have_rd_dep_need_stall = 1;
 

@@ -7,6 +7,7 @@
 `define OPCODE_BRANCH   7'b1100011
 `define OPCODE_LOAD     7'b0000011
 `define OPCODE_STORE    7'b0100011
+`define OPCODE_SYSTEM   7'b1110011
 
 `define FUNCT3_OP_ADD       3'b000
 `define FUNCT3_OP_SUB       3'b000
@@ -34,6 +35,8 @@
 `define FUNCT3_MEM_SB       3'b000
 `define FUNCT3_MEM_SH       3'b001
 `define FUNCT3_MEM_SW       3'b010
+
+`define FUNCT3_SYS_CSRRS    3'b010
 
 `define ALU_CMD_ADD     4'b0000
 `define ALU_CMD_SUB     4'b0001
@@ -266,6 +269,23 @@ module CtrlSignalGen (
                 // DataMemory control
                 datamem_write_en = 1;
                 datamem_write_width = load_store_width_or_type_from_funct3(funct3);
+                // other control
+                add_4_pc = 1'bx;
+            end
+
+            // for Zicntr extension, assume rdcycle, rdtime and rdinstret is similar 
+            // to addi <rd>, x0, <csr_value>
+            `OPCODE_SYSTEM: begin
+                // ALU control
+                alu_cmd = `ALU_CMD_ADD;
+                alu_src = `ALU_SRC_IMM;
+                // RegisterFile control
+                regfile_write_en = 1;
+                regfile_write_width = `REGISTER_FILE_WRITE_WIDTH_WORD;
+                regfile_write_data = `REGFILE_DATA_FROM_ALU;
+                // DataMemory control
+                datamem_write_en = 0;
+                datamem_write_width = 4'bx;
                 // other control
                 add_4_pc = 1'bx;
             end

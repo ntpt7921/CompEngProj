@@ -1,5 +1,5 @@
 `define STRING reg [8*64:1]
-`define EXECUTION_CLK_LIMIT 100000
+`define EXECUTION_CLK_LIMIT 10000000
 
 module HubrisTest_RunProgram_tb();
     reg clk;
@@ -163,10 +163,21 @@ module HubrisTest_RunProgram_tb();
                 $fwrite(fd, "\"pc\": %0d,", dut.pc);
 
                 $fwrite(fd, "\"regfile\":{");
+
                     for (i = 0; i < 31; i = i + 1)
                         $fwrite(fd, "\"x%0d\":%0d,", i, dut.register_file_instance.regfile[i]);
                     $fwrite(fd, "\"x%0d\":%0d", i, dut.register_file_instance.regfile[31]);
+
+                $fwrite(fd, "},");
+
+                $fwrite(fd, "\"csr\":{");
+
+                    $fwrite(fd, "\"cycle\":%0d,", dut.zicntr_reg_instance.cycle_reg);
+                    $fwrite(fd, "\"time\":%0d,", dut.zicntr_reg_instance.time_reg);
+                    $fwrite(fd, "\"instret\":%0d", dut.zicntr_reg_instance.instret_reg);
+
                 $fwrite(fd, "}");
+
             $fwrite(fd, "}");
             $fclose(fd);
         end
@@ -243,8 +254,11 @@ module HubrisTest_RunProgram_tb();
     integer clk_count;
 
     always @(posedge clk) begin 
-        if (is_running)
+        if (reset)
+            clk_count <= 0;
+        else
             clk_count <= clk_count + 1;
+
         if (clk_count > `EXECUTION_CLK_LIMIT) begin
             $display("Execution clk limit reached: %0d", `EXECUTION_CLK_LIMIT);
             report_hubris_internal_state();
@@ -272,9 +286,6 @@ module HubrisTest_RunProgram_tb();
         load_memory();
         invoke_reset();
  
-        @(posedge clk);
-        is_running = 1;
-        clk_count = 1;
         wait(halt == 1); // wait for halt
         is_running = 0;
 

@@ -12,6 +12,9 @@
 `define ALU_SRC_IMM 1'b0
 `define ALU_SRC_RS2 1'b1
 
+`define OPCODE_SYSTEM   7'b1110011
+`define FUNCT3_SYS_CSRRS    3'b010
+
 /*
 * NOTE: Functionality
 * Full Hubris design, use other module and connecting them with glue logic and pipeline register
@@ -72,6 +75,10 @@ module Hubris #(
     // ID section
     // --------------------------------------------------------------------------------------------
     wire [WORD_WIDTH_IN_BIT-1:0] id_imm; // extracted immediate value
+    wire [WORD_WIDTH_IN_BIT-1:0] id_final_imm = 
+        (id_parse_opcode == `OPCODE_SYSTEM && id_parse_funct3 == `FUNCT3_SYS_CSRRS) 
+        ? id_csr_content
+        : id_imm;       // when Zicntr instructions is met, act as if addi <rd>, x0, <csr_content>
     // control signal generation
     wire [3:0] id_alu_cmd;
     wire id_alu_src;
@@ -85,9 +92,14 @@ module Hubris #(
     wire [4:0] id_parse_rs1 = if_id_pl_inst[19:15];
     wire [4:0] id_parse_rs2 = if_id_pl_inst[24:20];
     wire [4:0] id_parse_rd = if_id_pl_inst[11:7];
+    wire [6:0] id_parse_opcode = if_id_pl_inst[6:0]; // used for Zicntr
+    wire [6:0] id_parse_funct3 = if_id_pl_inst[14:12]; // used for Zicntr
+    wire [11:0] id_parse_csr = if_id_pl_inst[31:20]; // used for Zicntr
     // register file data read
     wire [WORD_WIDTH_IN_BIT-1:0] id_rs1_data;
     wire [WORD_WIDTH_IN_BIT-1:0] id_rs2_data;
+    // csr register value (Zicntr)
+    wire [31:0] id_csr_content;
 
     // ID-EX pipeline
     // --------------------------------------------------------------------------------------------
@@ -114,7 +126,7 @@ module Hubris #(
     always @(posedge clk) begin 
         id_ex_pl_pc <= if_id_pl_pc;
         id_ex_pl_inst <= if_id_pl_inst;
-        id_ex_pl_imm <= id_imm;
+        id_ex_pl_imm <= id_final_imm;
         // control signal generation
         id_ex_pl_alu_cmd <= id_alu_cmd;
         id_ex_pl_alu_src <= id_alu_src;
@@ -328,6 +340,14 @@ module Hubris #(
     ImmediateGen immediate_gen_instance (
         .inst(if_id_pl_inst),
         .immediate(id_imm)
+    );
+
+    ZicntrReg zicntr_reg_instance (
+        .clk(clk),
+        .reset(reset),
+        .disable_instret_increment(stall_id_if_pl),
+        .csr_addr(id_parse_csr),
+        .csr_content(id_csr_content)
     );
 
     CtrlSignalGen ctrl_sig_gen_instance (
