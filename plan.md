@@ -43,7 +43,8 @@ Requirements:
     - Do each block (detail available after design)
     - Do integration test (detail available after design)
 - Benchmark
-    - Detail available after design
+    - Run Dhrystone
+- FPGA
 
 ## Work done
 
@@ -60,9 +61,10 @@ Requirements:
         - Complete the core first, memory subsystem for later
 - [x] Implement 
     - Do each block (detail available after design)
-- [ ] Validation
+- [x] Validation
     - Do each block (detail available after design)
     - Do integration test (detail available after design)
-- [ ] Benchmark
+- [x] Benchmark
     - Detail available after design
+- [ ] Implement in FPGA
 
