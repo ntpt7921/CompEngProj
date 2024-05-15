@@ -1,7 +1,3 @@
-`define REGISTER_FILE_WRITE_WIDTH_BYTE 4'd1
-`define REGISTER_FILE_WRITE_WIDTH_HALF 4'd2
-`define REGISTER_FILE_WRITE_WIDTH_WORD 4'd4
-
 `define FUNCT3_MEM_LB       3'b000
 `define FUNCT3_MEM_LH       3'b001
 `define FUNCT3_MEM_LW       3'b010
@@ -16,7 +12,6 @@ module LoadExtend #(
     parameter REG_WIDTH_IN_BIT = REG_WIDTH_IN_BYTE * 8
 )(
     input [REG_WIDTH_IN_BIT-1:0] read_data,
-    input [3:0] write_width,
     input [2:0] funct3,
     output reg [REG_WIDTH_IN_BIT-1:0] read_data_ext
 );

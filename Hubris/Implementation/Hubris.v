@@ -200,13 +200,13 @@ module Hubris #(
     // MEM section
     // --------------------------------------------------------------------------------------------
     wire [WORD_WIDTH_IN_BIT-1:0] mem_read_data;
-    wire [WORD_WIDTH_IN_BIT-1:0] mem_read_data_ext;
     
     // MEM-WB pipeline
     // --------------------------------------------------------------------------------------------
+    reg [2:0] mem_wb_pl_funct3;
     reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_imm;
     // data read from mem
-    reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_read_data_ext;
+    reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_read_data;
     // control signal generation
     reg mem_wb_pl_regfile_write_en;
     reg [3:0] mem_wb_pl_regfile_write_width;
@@ -218,10 +218,12 @@ module Hubris #(
     reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_ex_calculated_pc;
 
     always @(posedge clk) begin 
+        mem_wb_pl_funct3 <= ex_mem_pl_funct3;
         mem_wb_pl_imm <= ex_mem_pl_imm;
         // data read from mem
-        mem_wb_pl_read_data_ext <= mem_read_data_ext;
+        mem_wb_pl_read_data <= mem_read_data;
         // control signal generation
+        mem_wb_pl_regfile_write_width <= ex_mem_pl_regfile_write_width;
         mem_wb_pl_regfile_write_en <= ex_mem_pl_regfile_write_en;
         mem_wb_pl_regfile_write_width <= ex_mem_pl_regfile_write_width;
         mem_wb_pl_regfile_write_data <= ex_mem_pl_regfile_write_data;
@@ -234,6 +236,7 @@ module Hubris #(
 
     // WB section
     // --------------------------------------------------------------------------------------------
+    wire [WORD_WIDTH_IN_BIT-1:0] wb_read_data_ext;
     reg [WORD_WIDTH_IN_BIT-1:0] wb_write_data;
     always @(*) begin 
         case (mem_wb_pl_regfile_write_data)
@@ -241,7 +244,7 @@ module Hubris #(
             `REGFILE_DATA_FROM_ALU: 
                 wb_write_data = mem_wb_pl_alu_result;
             `REGFILE_DATA_FROM_DATAMEM:
-                wb_write_data = mem_wb_pl_read_data_ext;
+                wb_write_data = wb_read_data_ext;
             `REGFILE_DATA_FROM_IMM:
                 wb_write_data = mem_wb_pl_imm;
             `REGFILE_DATA_FROM_EXTADDER:
@@ -392,10 +395,9 @@ module Hubris #(
     LoadExtend #(
         .REG_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE)
     ) load_extend_instance (
-        .read_data(mem_read_data),
-        .write_width(ex_mem_pl_datamem_write_width),
-        .funct3(ex_mem_pl_funct3),
-        .read_data_ext(mem_read_data_ext)
+        .read_data(mem_wb_pl_read_data),
+        .funct3(mem_wb_pl_funct3),
+        .read_data_ext(wb_read_data_ext)
     );
 
 endmodule
