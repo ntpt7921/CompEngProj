@@ -6,8 +6,16 @@ TOOLCHAIN_PREFIX = /opt/riscv/bin/riscv32-unknown-elf-
 run: main.hex
 	../../RunProgram/hubris +bin=./main.hex
 
+all: main.elf main.hex program_content.h
+
+program_content.h: main.bin
+	xxd -i main.bin program_content.h
+
 main.hex: main.elf
 	$(TOOLCHAIN_PREFIX)objcopy -O verilog $< $@
+
+main.bin: main.elf
+	riscv32-unknown-elf-objcopy -O binary --only-section='*' $< $@
 
 main.elf: $(OBJS) link.ld
 	$(TOOLCHAIN_PREFIX)gcc $(CFLAGS) -Wl,-Bstatic,-T,link.ld,-Map,main.map,--strip-debug -o $@ $(OBJS) -lgcc
@@ -19,7 +27,7 @@ main.elf: $(OBJS) link.ld
 	$(TOOLCHAIN_PREFIX)gcc -c $(CFLAGS) $<
 
 clean:
-	rm -rf *.o *.elf *.map *.hex
+	rm -rf *.o *.elf *.map *.hex *.bin program_content.h
 
-.PHONY: clean
+.PHONY: clean all
 
