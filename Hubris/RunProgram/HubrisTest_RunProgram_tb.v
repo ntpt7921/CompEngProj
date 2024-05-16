@@ -5,19 +5,65 @@ module HubrisTest_RunProgram_tb();
     reg clk;
     reg reset;
     wire halt;
+    // memory port A
+    wire en_a;
+    wire [3:0] we_a;
+    wire [31:0] addr_a;
+    wire [31:0] din_a;
+    wire [31:0] dout_a;
+    // memory port B
+    wire en_b;
+    wire [3:0] we_b;
+    wire [31:0] addr_b;
+    wire [31:0] din_b;
+    wire [31:0] dout_b;
     // external output io
     reg io_output_en;
     wire [7:0] io_output_data;
     wire [31:0] io_buffer_size_avai;
 
     Hubris #(
-        .REG_NUMBER(32),
+        .REG_NUMBER(32), 
         .INST_START_ADDR(32'b0)
     ) dut (
         .clk(clk),
         .reset(reset),
         .halt(halt),
-        // io 
+        // memory port A
+        .en_a(en_a),
+        .we_a(we_a),
+        .addr_a(addr_a),
+        .din_a(din_a),
+        .dout_a(dout_a),
+        // memory port B
+        .en_b(en_b),
+        .we_b(we_b),
+        .addr_b(addr_b),
+        .din_b(din_b),
+        .dout_b(dout_b)
+    );
+
+    NewUnifiedMemory #(
+        .MEMORY_WIDTH_IN_BYTE(4),
+        .MEMORY_DEPTH_IN_WORD(1048576) // 4MiB
+    ) unified_memory_instance (
+        // port A - general use
+        .clk_a(clk),
+        .reset_a(reset),
+        .en_a(en_a),
+        .we_a(we_a),
+        .addr_a(addr_a),
+        .din_a(din_a),
+        .dout_a(dout_a),
+        // port B - instruction fetch
+        .clk_b(clk),
+        .reset_b(reset),
+        .en_b(en_b),
+        .we_b(we_b),
+        .addr_b(addr_b),
+        .din_b(din_b),
+        .dout_b(dout_b),
+        // external output io
         .io_output_en(io_output_en),
         .io_output_data(io_output_data),
         .io_buffer_size_avai(io_buffer_size_avai)
@@ -46,7 +92,7 @@ module HubrisTest_RunProgram_tb();
 
         begin 
             // write to memory
-            $readmemh(file_name, dut.unified_memory_instance.mem);
+            $readmemh(file_name, unified_memory_instance.mem);
 
             // debug - print back
             /*
@@ -157,11 +203,11 @@ module HubrisTest_RunProgram_tb();
         // if the memory is not a multiple of 4 bytes in size, bad thing happens
 
         begin 
-           mem_word_count = dut.unified_memory_instance.MEMORY_DEPTH_IN_WORD;
+            mem_word_count = unified_memory_instance.MEMORY_DEPTH_IN_WORD;
 
             fd = $fopen(file_name, "wb");
             for (i = 0; i < mem_word_count; i = i + 1) begin
-                $fwrite(fd, "%u", dut.unified_memory_instance.mem[i]);
+                $fwrite(fd, "%u", unified_memory_instance.mem[i]);
             end
         end
     endtask
