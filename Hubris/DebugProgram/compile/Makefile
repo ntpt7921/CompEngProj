@@ -12,7 +12,7 @@ program_content.h: main.bin
 	xxd -i main.bin program_content.h
 
 main.hex: main.elf
-	$(TOOLCHAIN_PREFIX)objcopy -O verilog $< $@
+	$(TOOLCHAIN_PREFIX)objcopy -O verilog --verilog-data-width=4 $< $@
 
 main.bin: main.elf
 	riscv32-unknown-elf-objcopy -O binary --only-section='*' $< $@

@@ -1,7 +1,3 @@
-`define REGISTER_FILE_WRITE_WIDTH_BYTE 4'd1
-`define REGISTER_FILE_WRITE_WIDTH_HALF 4'd2
-`define REGISTER_FILE_WRITE_WIDTH_WORD 4'd4
-
 /*
 * NOTE: Functionality
 * 2 combinational read port, output value of reg specified with write value bypass
@@ -24,8 +20,6 @@ module RegisterFile #(
     output reg [REG_WIDTH_IN_BIT-1:0] read_reg1_data,
     output reg [REG_WIDTH_IN_BIT-1:0] read_reg2_data,
     input write_enable,
-    // take input equal to constant defined at the top to choose write width
-    input [3:0] write_width,
     input [REG_ADDR_WIDTH-1:0] write_reg_addr,
     input [REG_WIDTH_IN_BIT-1:0] write_data
 );

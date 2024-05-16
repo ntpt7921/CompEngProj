@@ -52,7 +52,7 @@ module Orchestrator #(
 
     always @(posedge clk) begin
         if (reset)
-            clk_till_halt <= 2;
+            clk_till_halt <= 3;
         else if (halt_state == 1 && clk_till_halt != 0)
             clk_till_halt <= clk_till_halt - 1;
         else
@@ -136,7 +136,7 @@ module Orchestrator #(
                 opcode_next_inst, rs1_next_inst, rs2_next_inst);
     end
 
-    assign stall_id_if_pl = halt_state 
+    assign stall_id_if_pl = reset || halt_state 
         || pl_jump_stall || pl_load_stall || pl_rd_dep_stall || pl_branch_stall; 
 
     // logic for stall_pc_increment signal

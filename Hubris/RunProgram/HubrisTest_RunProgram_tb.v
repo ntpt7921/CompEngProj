@@ -1,5 +1,5 @@
 `define STRING reg [8*64:1]
-`define EXECUTION_CLK_LIMIT 10000000
+`define EXECUTION_CLK_LIMIT 1000000
 
 module HubrisTest_RunProgram_tb();
     reg clk;
@@ -40,56 +40,19 @@ module HubrisTest_RunProgram_tb();
         end
     endtask
 
-    task zero_memory;
-        integer memory_byte_count;
-        integer i;
-
-        begin 
-            /*
-            // - using old UnifiedMemory
-            memory_byte_count = 
-                dut.unified_memory_instance.inst_memory_instance.MEMORY_WIDTH_IN_BYTE 
-                * dut.unified_memory_instance.inst_memory_instance.MEMORY_DEPTH_IN_WORD;
-
-            for (i = 0; i < memory_byte_count; i = i + 1)
-                dut.unified_memory_instance.inst_memory_instance.mem[i] = 0;
-
-            memory_byte_count = 
-                dut.unified_memory_instance.data_memory_instance.MEMORY_WIDTH_IN_BYTE 
-                * dut.unified_memory_instance.data_memory_instance.MEMORY_DEPTH_IN_WORD;
-
-            for (i = 0; i < memory_byte_count; i = i + 1)
-                dut.unified_memory_instance.data_memory_instance.mem[i] = 0;
-            */
-
-           // - using NewUnifiedMemory
-           memory_byte_count = 
-               dut.unified_memory_instance.MEMORY_WIDTH_IN_BYTE 
-               * dut.unified_memory_instance.MEMORY_DEPTH_IN_WORD;
-
-            for (i = 0; i < memory_byte_count; i = i + 1) 
-                // - using old UnifiedMemory
-                //dut.unified_memory_instance.inst_memory_instance.mem[i] = 0;
-                // - using NewUnifiedMemory
-                dut.unified_memory_instance.mem[i] = 0;
-        end
-    endtask
-
     task load_binary_into_hubris_mem;
         input `STRING file_name;
         integer i;
 
         begin 
             // write to memory
-            // - using old UnifiedMemory
-            //$readmemh(file_name, dut.unified_memory_instance.inst_memory_instance.mem);
-            // - using NewUnifiedMemory
             $readmemh(file_name, dut.unified_memory_instance.mem);
 
             // debug - print back
             /*
+            $display("Debug - print back content from memory");
             for (i = 0; i < 100; i = i + 1) begin 
-                $display("%d", dut.inst_memory_instance.mem[i]);
+                $display("%h", dut.unified_memory_instance.mem[i]);
             end
             */
         end
@@ -112,7 +75,7 @@ module HubrisTest_RunProgram_tb();
 
         begin 
             reset = 1;
-            for (i = 0; i < 4; i = i + 1)
+            for (i = 0; i < 5; i = i + 1)
                 @(posedge clk);
             @(negedge clk);
             reset = 0;
@@ -186,37 +149,19 @@ module HubrisTest_RunProgram_tb();
     task dump_memory_to_file;
         input `STRING file_name;
         integer i;
-        integer memory_byte_count;
+        integer mem_word_count;
         integer fd;
-        reg [31:0] temp;
 
         // NOTE: dump data memory to binary file
         // each fwrite with %u format write a 32 bit value, so read 4 memory cell
         // if the memory is not a multiple of 4 bytes in size, bad thing happens
 
         begin 
-            // using old UnifiedMemory
-            //memory_byte_count = dut.unified_memory_instance.DATA_SIZE_IN_BYTE;
-            // using NewUnifiedMemory
-           memory_byte_count = 
-               dut.unified_memory_instance.MEMORY_WIDTH_IN_BYTE 
-               * dut.unified_memory_instance.MEMORY_DEPTH_IN_WORD;
+           mem_word_count = dut.unified_memory_instance.MEMORY_DEPTH_IN_WORD;
 
             fd = $fopen(file_name, "wb");
-            for (i = 0; i < memory_byte_count; i = i + 4) begin
-                temp =  {
-                    // using old UnifiedMemory
-                    //dut.unified_memory_instance.data_memory_instance.mem[i+3],
-                    //dut.unified_memory_instance.data_memory_instance.mem[i+2],
-                    //dut.unified_memory_instance.data_memory_instance.mem[i+1],
-                    //dut.unified_memory_instance.data_memory_instance.mem[i]
-                    // using NewUnifiedMemory
-                    dut.unified_memory_instance.mem[i+3],
-                    dut.unified_memory_instance.mem[i+2],
-                    dut.unified_memory_instance.mem[i+1],
-                    dut.unified_memory_instance.mem[i]
-                    };
-                $fwrite(fd, "%u", temp);
+            for (i = 0; i < mem_word_count; i = i + 1) begin
+                $fwrite(fd, "%u", dut.unified_memory_instance.mem[i]);
             end
         end
     endtask
@@ -281,10 +226,8 @@ module HubrisTest_RunProgram_tb();
             $dumpvars(0, HubrisTest_RunProgram_tb);
         end
 
-        // $monitor("t=%0t clk=%1b reset=%1b", $time, clk, reset);
-        zero_memory();
-        load_memory();
         invoke_reset();
+        load_memory();
  
         wait(halt == 1); // wait for halt
         is_running = 0;

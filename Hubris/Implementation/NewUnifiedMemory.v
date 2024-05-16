@@ -1,16 +1,13 @@
-`define DATAMEMORY_WRITE_WIDTH_BYTE 4'd1
-`define DATAMEMORY_WRITE_WIDTH_HALF 4'd2
-`define DATAMEMORY_WRITE_WIDTH_WORD 4'd4
+`define OUTPUT_BYTES_AVAI_ADDR  32'h8000_0000
+`define OUTPUT_BYTES_ADDR       32'h8000_0004
 
 /*
 * NOTE:
 * this module implements the unified memory with flat address space with no
-* mis-aligned write allowed. it assume that memory read can be one within the
-* same cycle, while write takes one cycle to complete 
-* this module perform combinational read for 4 consecutive bytes starting from
-* addr with synchronous write with specified width (1, 2 or 4 bytes)
-*   - 2 read port (combinational)
-*   - 1 write port (synchronous, 1 cycle, only aligned)
+* mis-aligned write allowed. it assume that memory read and write takes one 
+* clock edge to complete.
+*   - 1 read/write port (B) for instruction fetch, normally never write
+*   - 1 read/write port (A) for general use
 */
 
 /*
@@ -30,98 +27,127 @@ module NewUnifiedMemory #(
     // Memory spec
     parameter MEMORY_WIDTH_IN_BYTE = 4,
     parameter MEMORY_WIDTH_IN_BIT = MEMORY_WIDTH_IN_BYTE * 8,
+    parameter MEMORY_ADDR_TRUNCATE_BIT_NUMBER = $clog2(MEMORY_WIDTH_IN_BYTE),
     parameter MEMORY_DEPTH_IN_WORD = 4096,
     parameter MEMORY_DEPTH_IN_BYTE = MEMORY_DEPTH_IN_WORD * 4,
     // IO spec
     parameter OUTPUT_BUFFER_BYTE_SIZE = 32 
 )(
-    input clk,
-    input reset,
-    // read
-    input [31:0] addr_read_0,
-    input [31:0] addr_read_1,
-    output reg [MEMORY_WIDTH_IN_BIT-1:0] read_data_0,
-    output reg [MEMORY_WIDTH_IN_BIT-1:0] read_data_1,
-    // write
-    input write_en, // active high
-    input [3:0] write_width,
-    input [31:0] addr_write,
-    input [MEMORY_WIDTH_IN_BIT-1:0] write_data,
+    // port A
+    input clk_a,
+    input reset_a,
+    input en_a,
+    input [3:0] we_a,
+    input [31:0] addr_a,
+    input [MEMORY_WIDTH_IN_BIT-1:0] din_a,
+    output reg [MEMORY_WIDTH_IN_BIT-1:0] dout_a,
+    // port B
+    input clk_b,
+    input reset_b,
+    input en_b,
+    input [3:0] we_b,
+    input [31:0] addr_b,
+    input [MEMORY_WIDTH_IN_BIT-1:0] din_b,
+    output reg [MEMORY_WIDTH_IN_BIT-1:0] dout_b,
     // external output io
     input io_output_en,
     output [7:0] io_output_data,
     output [31:0] io_buffer_size_avai
 );
 
-    reg [7:0] mem [0:MEMORY_DEPTH_IN_BYTE-1];
-
-    // read part
-    wire [31:0] read_data_0_mem = 
-        { mem[addr_read_0+3], mem[addr_read_0+2], mem[addr_read_0+1], mem[addr_read_0] };
-    wire [31:0] read_data_1_mem = 
-        { mem[addr_read_1+3], mem[addr_read_1+2], mem[addr_read_1+1], mem[addr_read_1] };
-
-    always @(*) begin
-
-        if (addr_read_0 == 32'h8000_0000)
-            read_data_0 = io_buffer_size_avai;
-        else
-            read_data_0 = read_data_0_mem;
-
-        if (addr_read_1 == 32'h8000_0000)
-            read_data_1 = io_buffer_size_avai;
-        else
-            read_data_1 = read_data_1_mem;
-    end
-
-    // write part
-    always @(posedge clk) begin
-
-        if (write_en && addr_write != 32'h8000_0000) begin
-
-            case (write_width)
-
-                `DATAMEMORY_WRITE_WIDTH_BYTE:
-                    mem[addr_write] <= write_data[7:0];
-
-                `DATAMEMORY_WRITE_WIDTH_HALF:
-                    begin 
-                    mem[addr_write] <= write_data[7:0];
-                    mem[addr_write+1] <= write_data[15:8];
-                    end
-
-                `DATAMEMORY_WRITE_WIDTH_WORD:
-                    begin 
-                    mem[addr_write] <= write_data[7:0];
-                    mem[addr_write+1] <= write_data[15:8];
-                    mem[addr_write+2] <= write_data[23:16];
-                    mem[addr_write+3] <= write_data[31:24];
-                    end
-
-                default:
-                    // in case the write width is unrecognized
-                    // do not write anything
-                    ;
-
-            endcase
-
-        end
-
-    end
-
     DirectionalBuffer #(
         .BUFFER_BYTE_SIZE(OUTPUT_BUFFER_BYTE_SIZE)
     ) io_output_buffer (
 
-        .clk(clk),
-        .reset(reset),
+        .clk(clk_a), // port A considered general use
+        .reset(reset_a),
         // read/write interface
-        .input_en(write_en && (addr_write == 32'h8000_0004)),
-        .input_data(write_data[7:0]),
+        .input_en(!reset_a && en_a && (we_a != 0) && (addr_a == `OUTPUT_BYTES_ADDR)),
+        .input_data(din_a[7:0]),
         .buffer_size_avai(io_buffer_size_avai),
         .output_en(io_output_en),
         .output_data(io_output_data)
     );
 
+    reg [MEMORY_WIDTH_IN_BIT-1:0] mem [0:MEMORY_DEPTH_IN_WORD-1];
+    wire [29:0] addr_a_trunc = addr_a >> MEMORY_ADDR_TRUNCATE_BIT_NUMBER;
+    wire [29:0] addr_b_trunc = addr_b >> MEMORY_ADDR_TRUNCATE_BIT_NUMBER;
+    integer i;
+
+    // reset part
+    always @(posedge clk_a) begin
+        if (reset_a && en_a) begin
+            for (i = 0; i < MEMORY_DEPTH_IN_WORD; i = i + 1) begin
+                mem[i] <= 0;
+            end
+        end
+    end
+
+    always @(posedge clk_b) begin
+        if (reset_b && en_b) begin
+            for (i = 0; i < MEMORY_DEPTH_IN_WORD; i = i + 1) begin
+                mem[i] <= 0;
+            end
+        end
+    end
+
+    // read part
+    wire [MEMORY_WIDTH_IN_BIT-1:0] port_a_next_dout = mem[addr_a_trunc];
+    wire [MEMORY_WIDTH_IN_BIT-1:0] port_b_next_dout = mem[addr_b_trunc];
+
+    always @(posedge clk_a) begin
+        if (!reset_a && en_a)
+            if (addr_a == `OUTPUT_BYTES_AVAI_ADDR)
+                dout_a <= io_buffer_size_avai;
+            else
+                dout_a <= port_a_next_dout; 
+    end
+
+    always @(posedge clk_b) begin
+        if (!reset_b && en_b)
+            if (addr_b == `OUTPUT_BYTES_AVAI_ADDR)
+                dout_b <= io_buffer_size_avai;
+            else
+                dout_b <= port_b_next_dout; 
+    end
+
+    // write part
+    wire [7:0] byte_a_0 = we_a[0] ? din_a[7:0] : mem[addr_a_trunc][7:0];
+    wire [7:0] byte_a_1 = we_a[1] ? din_a[15:8] : mem[addr_a_trunc][15:8];
+    wire [7:0] byte_a_2 = we_a[2] ? din_a[23:16] : mem[addr_a_trunc][23:16];
+    wire [7:0] byte_a_3 = we_a[3] ? din_a[31:24] : mem[addr_a_trunc][31:24];
+    wire [31:0] word_a = { byte_a_3, byte_a_2, byte_a_1, byte_a_0 };
+
+    always @(posedge clk_a) begin
+
+        if (!reset_a && en_a && (we_a != 0)) begin
+
+            if (addr_a == `OUTPUT_BYTES_ADDR)
+                ; // do nothing
+            else 
+                mem[addr_a_trunc] <= word_a;
+
+        end
+
+    end
+
+    wire [7:0] byte_b_0 = we_b[0] ? din_b[7:0] : mem[addr_b_trunc][7:0];
+    wire [7:0] byte_b_1 = we_b[1] ? din_b[15:8] : mem[addr_b_trunc][15:8];
+    wire [7:0] byte_b_2 = we_b[2] ? din_b[23:16] : mem[addr_b_trunc][23:16];
+    wire [7:0] byte_b_3 = we_b[3] ? din_b[31:24] : mem[addr_b_trunc][31:24];
+    wire [31:0] word_b = { byte_b_3, byte_b_2, byte_b_1, byte_b_0 };
+
+    always @(posedge clk_b) begin
+
+        if (!reset_b && en_b && (we_b != 0)) begin
+
+            if (addr_b == `OUTPUT_BYTES_ADDR)
+                ; // do nothing
+            else 
+                mem[addr_b_trunc] <= word_b;
+
+        end
+
+    end
 
 endmodule

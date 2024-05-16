@@ -13,22 +13,26 @@ module LoadExtend #(
 )(
     input [REG_WIDTH_IN_BIT-1:0] read_data,
     input [2:0] funct3,
+    input [1:0] byte_offset,  // 2 lsb bits of address from mem stage
     output reg [REG_WIDTH_IN_BIT-1:0] read_data_ext
 );
+
+    wire [REG_WIDTH_IN_BIT-1:0] sdata; // shifted read_data
+    assign sdata = (read_data) >> (byte_offset * 8);
       
     always @(*) begin
 
         case (funct3)
 
-            `FUNCT3_MEM_LB: read_data_ext = { {24{read_data[7]}}, read_data[7:0] };
-            `FUNCT3_MEM_LH: read_data_ext = { {16{read_data[7]}}, read_data[15:0] };
-            `FUNCT3_MEM_LW: read_data_ext = read_data;
-            `FUNCT3_MEM_LBU: read_data_ext = { {24{1'b0}}, read_data[7:0] };
-            `FUNCT3_MEM_LHU: read_data_ext = { {16{1'b0}}, read_data[15:0] };
-            `FUNCT3_MEM_SB: read_data_ext = { {24{1'b0}}, read_data[7:0] };
-            `FUNCT3_MEM_SH: read_data_ext = { {16{1'b0}}, read_data[15:0] };
-            `FUNCT3_MEM_SW: read_data_ext = read_data;
-            
+            `FUNCT3_MEM_LB: read_data_ext = { {24{sdata[7]}}, sdata[7:0] };
+            `FUNCT3_MEM_LH: read_data_ext = { {16{sdata[7]}}, sdata[15:0] };
+            `FUNCT3_MEM_LW: read_data_ext = sdata;
+            `FUNCT3_MEM_LBU: read_data_ext = { {24{1'b0}}, sdata[7:0] };
+            `FUNCT3_MEM_LHU: read_data_ext = { {16{1'b0}}, sdata[15:0] };
+            `FUNCT3_MEM_SB: read_data_ext = { {24{1'b0}}, sdata[7:0] };
+            `FUNCT3_MEM_SH: read_data_ext = { {16{1'b0}}, sdata[15:0] };
+            `FUNCT3_MEM_SW: read_data_ext = sdata;
+
             default: read_data_ext = {32 {1'bx}};
 
         endcase

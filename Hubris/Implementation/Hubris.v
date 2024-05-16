@@ -5,10 +5,6 @@
 `define REGFILE_DATA_FROM_IMM       2'b10
 `define REGFILE_DATA_FROM_EXTADDER  2'b11
 
-`define REGISTER_FILE_WRITE_WIDTH_BYTE 4'd1
-`define REGISTER_FILE_WRITE_WIDTH_HALF 4'd2
-`define REGISTER_FILE_WRITE_WIDTH_WORD 4'd4
-
 `define ALU_SRC_IMM 1'b0
 `define ALU_SRC_RS2 1'b1
 
@@ -35,41 +31,64 @@ module Hubris #(
     output [31:0] io_buffer_size_avai
 );
 
-    // IF section
+    // IF1+2 section
     // --------------------------------------------------------------------------------------------
     wire [WORD_WIDTH_IN_BIT-1:0] new_addr;
     wire chg_addr;
+    wire stall_id_if_pl;
     wire pc_stall_write;
     wire final_pc_stall_write = (chg_addr) ? 0 : pc_stall_write; // don't stall pc write if addr need change
     reg [WORD_WIDTH_IN_BIT-1:0] pc;
 
     always @(posedge clk) begin 
-        if (reset)
+        if (reset) begin
             pc <= INST_START_ADDR;
+        end
         else if (final_pc_stall_write)
             pc <= pc;
         else begin
             if (chg_addr)
-                pc <= new_addr;
+                pc <= new_addr + 4;
             else
                 pc <= pc + 4;
         end
     end
 
-    wire [WORD_WIDTH_IN_BIT-1:0] inst_addr = pc; // address of next instruction
-    wire [WORD_WIDTH_IN_BIT-1:0] if_inst; // instruction read from InstMemory
+    wire [WORD_WIDTH_IN_BIT-1:0] if1_pc =
+        (chg_addr) ? new_addr : pc; // addr of if1 instruction
+
+    reg [WORD_WIDTH_IN_BIT-1:0] if2_pc; // addr of if2 instruction
+    wire [WORD_WIDTH_IN_BIT-1:0] if2_inst; // if2 instruction read from memory
+
+    always @(posedge clk) begin 
+        if (reset)
+            if2_pc <= 32'b0;
+        else if (!stall_id_if_pl || chg_addr)
+            if2_pc <= if1_pc;
+    end
+
+    wire [WORD_WIDTH_IN_BIT-1:0] final_if_inst = if2_inst;
+    wire [WORD_WIDTH_IN_BIT-1:0] final_pc = if2_pc;
 
     // IF-ID pipeline
     // --------------------------------------------------------------------------------------------
-    wire stall_id_if_pl;
     reg [WORD_WIDTH_IN_BIT-1:0] if_id_pl_pc;
     reg [WORD_WIDTH_IN_BIT-1:0] if_id_pl_inst;
+    reg reset_1clk_delay;
+
+    always @(posedge clk)
+        reset_1clk_delay <= reset;
+
     always @(posedge clk) begin
-        if_id_pl_pc <= inst_addr;
-        if (reset || stall_id_if_pl) // insert NOP if needed
+
+        if (stall_id_if_pl || reset || reset_1clk_delay) begin
             if_id_pl_inst <= `NOP_INST;
-        else
-            if_id_pl_inst <= if_inst;
+            if_id_pl_pc <= 32'b0;
+        end
+        else begin
+            if_id_pl_inst <= final_if_inst;
+            if_id_pl_pc <= final_pc;
+        end
     end
 
     // ID section
@@ -199,14 +218,14 @@ module Hubris #(
 
     // MEM section
     // --------------------------------------------------------------------------------------------
-    wire [WORD_WIDTH_IN_BIT-1:0] mem_read_data;
+    wire [WORD_WIDTH_IN_BIT-1:0] mem_read_data; // data read from mem, latched
     
     // MEM-WB pipeline
     // --------------------------------------------------------------------------------------------
     reg [2:0] mem_wb_pl_funct3;
     reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_imm;
     // data read from mem
-    reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_read_data;
+    wire [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_read_data = mem_read_data;
     // control signal generation
     reg mem_wb_pl_regfile_write_en;
     reg [3:0] mem_wb_pl_regfile_write_width;
@@ -220,8 +239,6 @@ module Hubris #(
     always @(posedge clk) begin 
         mem_wb_pl_funct3 <= ex_mem_pl_funct3;
         mem_wb_pl_imm <= ex_mem_pl_imm;
-        // data read from mem
-        mem_wb_pl_read_data <= mem_read_data;
         // control signal generation
         mem_wb_pl_regfile_write_width <= ex_mem_pl_regfile_write_width;
         mem_wb_pl_regfile_write_en <= ex_mem_pl_regfile_write_en;
@@ -236,8 +253,8 @@ module Hubris #(
 
     // WB section
     // --------------------------------------------------------------------------------------------
-    wire [WORD_WIDTH_IN_BIT-1:0] wb_read_data_ext;
     reg [WORD_WIDTH_IN_BIT-1:0] wb_write_data;
+    wire [WORD_WIDTH_IN_BIT-1:0] wb_read_data_ext;
     always @(*) begin 
         case (mem_wb_pl_regfile_write_data)
 
@@ -264,6 +281,35 @@ module Hubris #(
         .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
         .MEMORY_DEPTH_IN_WORD(1048576) // 4MiB
     ) unified_memory_instance (
+        // port A - general use
+        .clk_a(clk),
+        .reset_a(reset),
+        .en_a(1'b1),
+        .we_a(ex_mem_pl_datamem_write_en 
+            ? (ex_mem_pl_datamem_write_width << ex_mem_pl_alu_result[1:0])
+            : 4'b0),
+        .addr_a(ex_mem_pl_alu_result),
+        .din_a(ex_mem_pl_rs2_data << (ex_mem_pl_alu_result[1:0] * 8)),
+        .dout_a(mem_read_data),
+        // port B - instruction fetch
+        .clk_b(clk),
+        .reset_b(reset),
+        .en_b(!stall_id_if_pl || chg_addr),
+        .we_b(4'b0),
+        .addr_b(if1_pc),
+        .din_b(32'b0),
+        .dout_b(if2_inst),
+        // external output io
+        .io_output_en(io_output_en),
+        .io_output_data(io_output_data),
+        .io_buffer_size_avai(io_buffer_size_avai)
+    );
+
+    /*
+    NewUnifiedMemory #(
+        .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
+        .MEMORY_DEPTH_IN_WORD(1048576) // 4MiB
+    ) unified_memory_instance (
         .clk(clk),
         .reset(reset),
         // read
@@ -282,32 +328,6 @@ module Hubris #(
         .io_output_data(io_output_data),
         .io_buffer_size_avai(io_buffer_size_avai)
     );
-
-    /*
-    // using the segmented addressing old UnifiedMemory
-    UnifiedMemory #(
-        .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
-        .INST_SIZE_IN_WORD(524288), // 2MiB
-        .DATA_SIZE_IN_WORD(524288)  // 2MiB
-    ) unified_memory_instance (
-        .clk(clk),
-        // for inst
-        // address to bytes, misalignement allowed
-        // always return 4 bytes of continuous memory from addr
-        .inst_addr(inst_addr), 
-        .inst_write_enable(1'b0),
-        .inst_write_width(`REGISTER_FILE_WRITE_WIDTH_WORD),
-        .inst_write_data(0),
-        .inst_read_data(if_inst),
-        // for data
-        // address to bytes, misalignement allowed
-        // always return 4 bytes of continuous memory from addr
-        .data_addr(ex_mem_pl_alu_result), 
-        .data_write_enable(ex_mem_pl_datamem_write_en),
-        .data_write_width(ex_mem_pl_datamem_write_width),
-        .data_write_data(ex_mem_pl_rs2_data),
-        .data_read_data(mem_read_data)
-    );
     */
 
     Orchestrator #(
@@ -315,7 +335,7 @@ module Hubris #(
     ) orchestrator_instance (
         .clk(clk),
         .reset(reset), // positive assertion, sychrnonous reset
-        .next_inst(if_inst),
+        .next_inst(final_if_inst),
         .curr_inst(if_id_pl_inst),
         .prev_inst(id_ex_pl_inst),
 
@@ -335,7 +355,6 @@ module Hubris #(
         .read_reg1_data(id_rs1_data),
         .read_reg2_data(id_rs2_data),
         .write_enable(mem_wb_pl_regfile_write_en),
-        .write_width(mem_wb_pl_regfile_write_width),
         .write_reg_addr(mem_wb_pl_parse_rd),
         .write_data(wb_write_data)
     );
@@ -397,6 +416,7 @@ module Hubris #(
     ) load_extend_instance (
         .read_data(mem_wb_pl_read_data),
         .funct3(mem_wb_pl_funct3),
+        .byte_offset(mem_wb_pl_alu_result[1:0]),
         .read_data_ext(wb_read_data_ext)
     );
 

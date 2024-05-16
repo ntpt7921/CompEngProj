@@ -12,7 +12,7 @@ program_content.h: dhry.bin
 	xxd -i $< program_content.h
 
 dhry.hex: dhry.elf
-	$(TOOLCHAIN_PREFIX)objcopy -O verilog $< $@
+	$(TOOLCHAIN_PREFIX)objcopy -O verilog --verilog-data-width=4 $< $@
 
 dhry.bin: dhry.elf
 	riscv32-unknown-elf-objcopy -O binary --only-section='*' $< $@

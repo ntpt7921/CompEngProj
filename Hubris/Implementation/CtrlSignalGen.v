@@ -58,9 +58,9 @@
 `define REGISTER_FILE_WRITE_WIDTH_HALF 4'd2
 `define REGISTER_FILE_WRITE_WIDTH_WORD 4'd4
 
-`define DATAMEMORY_WRITE_WIDTH_BYTE 4'd1
-`define DATAMEMORY_WRITE_WIDTH_HALF 4'd2
-`define DATAMEMORY_WRITE_WIDTH_WORD 4'd4
+`define DATAMEMORY_WRITE_WIDTH_BYTE 4'b0001
+`define DATAMEMORY_WRITE_WIDTH_HALF 4'b0011
+`define DATAMEMORY_WRITE_WIDTH_WORD 4'b1111
 
 `define ALU_SRC_IMM 1'b0
 `define ALU_SRC_RS2 1'b1
@@ -121,14 +121,14 @@ module CtrlSignalGen (
         begin 
             load_store_width_or_type_from_funct3 = 4'bx;
             case (funct3)
-                `FUNCT3_MEM_LB: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_BYTE;
-                `FUNCT3_MEM_LH: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_HALF;
-                `FUNCT3_MEM_LW: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_WORD;
-                `FUNCT3_MEM_LBU: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_BYTE;
-                `FUNCT3_MEM_LHU: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_HALF;
-                `FUNCT3_MEM_SB: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_BYTE;
-                `FUNCT3_MEM_SH: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_HALF;
-                `FUNCT3_MEM_SW: load_store_width_or_type_from_funct3 = `REGISTER_FILE_WRITE_WIDTH_WORD;
+                `FUNCT3_MEM_LB: load_store_width_or_type_from_funct3 = `DATAMEMORY_WRITE_WIDTH_BYTE;
+                `FUNCT3_MEM_LH: load_store_width_or_type_from_funct3 = `DATAMEMORY_WRITE_WIDTH_HALF;
+                `FUNCT3_MEM_LW: load_store_width_or_type_from_funct3 = `DATAMEMORY_WRITE_WIDTH_WORD;
+                `FUNCT3_MEM_LBU: load_store_width_or_type_from_funct3 = `DATAMEMORY_WRITE_WIDTH_BYTE;
+                `FUNCT3_MEM_LHU: load_store_width_or_type_from_funct3 = `DATAMEMORY_WRITE_WIDTH_HALF;
+                `FUNCT3_MEM_SB: load_store_width_or_type_from_funct3 = `DATAMEMORY_WRITE_WIDTH_BYTE;
+                `FUNCT3_MEM_SH: load_store_width_or_type_from_funct3 = `DATAMEMORY_WRITE_WIDTH_HALF;
+                `FUNCT3_MEM_SW: load_store_width_or_type_from_funct3 = `DATAMEMORY_WRITE_WIDTH_WORD;
                 default: load_store_width_or_type_from_funct3 = 4'bx;
             endcase
         end
