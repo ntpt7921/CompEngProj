@@ -1,4 +1,3 @@
-USE_MYSTDLIB = 0
 OBJS = dhry_1.o dhry_2.o stdlib.o start.o
 CFLAGS = -O3 -mabi=ilp32 -march=rv32i -DTIME -DRISCV -DUSE_MYSTDLIB -ffreestanding -nostdlib
 TOOLCHAIN_PREFIX = /opt/riscv/bin/riscv32-unknown-elf-

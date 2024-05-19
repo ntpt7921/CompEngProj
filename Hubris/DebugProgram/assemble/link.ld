@@ -6,11 +6,7 @@ SECTIONS
   . = 0;
   .text : { *(.text); *(.text.*) }
   .bss : { *(.bss); *(.bss.*) }
-  .data : { 
-      . = 0x1000;
-      *(.data) 
-      *(.data.*) 
-  }
+  .data : { *(.data); *(.data.*) }
   .rodata : { *(.rodata); *(.rodata.*) }
 
   io_output_bytes_avai = 0x80000000;

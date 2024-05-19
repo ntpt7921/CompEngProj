@@ -11,16 +11,34 @@
 `define OPCODE_SYSTEM   7'b1110011
 `define FUNCT3_SYS_CSRRS    3'b010
 
+`define OUTPUT_BYTES_AVAI_ADDR  32'h8000_0000
+`define OUTPUT_BYTES_ADDR       32'h8000_0004
+
 /*
 * NOTE: Functionality
 * Full Hubris design, use other module and connecting them with glue logic and pipeline register
+*/
+
+/*
+* NOTE:
+* this module also allows for memory-mapped IO, placed at addr 32'h8000_0000
+* onward. it work in tandem with NewUnifiedMemory
+*   - output takes 8 bytes (2 words), in order:
+*       - output_bytes_avai (4 bytes) - 32'h8000_0000: can be read, contains
+*       current number of available output buffer bytes. writing to this have no
+*       effect
+*       - output_bytes (4 bytes) - 32'h8000_0004: each write to this (at any width)
+*       store a byte of output data situated at the least significant byte of
+*       the write data. read to this return undefined value
 */
 
 module Hubris #(
     parameter REG_NUMBER = 32,
     parameter WORD_WIDTH_IN_BYTE = 4,
     parameter WORD_WIDTH_IN_BIT = WORD_WIDTH_IN_BYTE * 8,
-    parameter INST_START_ADDR = 32'b0
+    parameter INST_START_ADDR = 32'b0,
+    // IO spec
+    parameter OUTPUT_BUFFER_BYTE_SIZE = 32 
 )(
     input clk,
     input reset,
@@ -36,7 +54,11 @@ module Hubris #(
     output [3:0] we_b,
     output [31:0] addr_b,
     output [WORD_WIDTH_IN_BIT-1:0] din_b,
-    input [WORD_WIDTH_IN_BIT-1:0] dout_b
+    input [WORD_WIDTH_IN_BIT-1:0] dout_b,
+    // external output io
+    input io_output_en,
+    output [7:0] io_output_data,
+    output [31:0] io_buffer_size_avai
 );
 
     // IF1+2 section
@@ -227,13 +249,19 @@ module Hubris #(
     // MEM section
     // --------------------------------------------------------------------------------------------
     wire [WORD_WIDTH_IN_BIT-1:0] mem_read_data; // data read from mem, latched
+    // memory mapped io, read avai buffer space
+    reg [WORD_WIDTH_IN_BIT-1:0] mem_io_buffer_size_avai_port_a;
+    always @(posedge clk) begin
+        if (addr_a == `OUTPUT_BYTES_AVAI_ADDR)
+            mem_io_buffer_size_avai_port_a <= io_buffer_size_avai;
+    end
     
     // MEM-WB pipeline
     // --------------------------------------------------------------------------------------------
     reg [2:0] mem_wb_pl_funct3;
     reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_imm;
     // data read from mem
-    wire [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_read_data = mem_read_data;
+    wire [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_read_data;// = mem_read_data;
     // control signal generation
     reg mem_wb_pl_regfile_write_en;
     reg [3:0] mem_wb_pl_regfile_write_width;
@@ -243,6 +271,11 @@ module Hubris #(
     // result from EX section
     reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_alu_result;
     reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_ex_calculated_pc;
+
+    assign mem_wb_pl_read_data = 
+        (mem_wb_pl_alu_result == `OUTPUT_BYTES_AVAI_ADDR) 
+        ? mem_io_buffer_size_avai_port_a 
+        : mem_read_data;
 
     always @(posedge clk) begin 
         mem_wb_pl_funct3 <= ex_mem_pl_funct3;
@@ -284,7 +317,7 @@ module Hubris #(
     // instatiate all the submodules
     // --------------------------------------------------------------------------------------------
 
-    assign en_a = 1'b1;
+    assign en_a = (addr_a == `OUTPUT_BYTES_ADDR) ? 1'b0 : 1'b1; // disable if accessing io
     assign we_a = ex_mem_pl_datamem_write_en 
         ? (ex_mem_pl_datamem_write_width << ex_mem_pl_alu_result[1:0]) 
         : 4'b0;
@@ -417,6 +450,20 @@ module Hubris #(
         .funct3(mem_wb_pl_funct3),
         .byte_offset(mem_wb_pl_alu_result[1:0]),
         .read_data_ext(wb_read_data_ext)
+    );
+
+    DirectionalBuffer #(
+        .BUFFER_BYTE_SIZE(OUTPUT_BUFFER_BYTE_SIZE)
+    ) io_output_buffer (
+
+        .clk(clk), // port A considered general use
+        .reset(reset),
+        // read/write interface
+        .input_en(!reset && en_a && (we_a != 0) && (addr_a == `OUTPUT_BYTES_ADDR)),
+        .input_data(din_a[7:0]),
+        .buffer_size_avai(io_buffer_size_avai),
+        .output_en(io_output_en),
+        .output_data(io_output_data)
     );
 
 endmodule

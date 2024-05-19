@@ -13,7 +13,7 @@
 /*
 * NOTE:
 * this module also allows for memory-mapped IO, placed at addr 32'h8000_0000
-* onward
+* onward. it work in tandem with Hubris
 *   - output takes 8 bytes (2 words), in order:
 *       - output_bytes_avai (4 bytes) - 32'h8000_0000: can be read, contains
 *       current number of available output buffer bytes. writing to this have no
@@ -29,9 +29,7 @@ module NewUnifiedMemory #(
     parameter MEMORY_WIDTH_IN_BIT = MEMORY_WIDTH_IN_BYTE * 8,
     parameter MEMORY_ADDR_TRUNCATE_BIT_NUMBER = $clog2(MEMORY_WIDTH_IN_BYTE),
     parameter MEMORY_DEPTH_IN_WORD = 4096,
-    parameter MEMORY_DEPTH_IN_BYTE = MEMORY_DEPTH_IN_WORD * 4,
-    // IO spec
-    parameter OUTPUT_BUFFER_BYTE_SIZE = 32 
+    parameter MEMORY_DEPTH_IN_BYTE = MEMORY_DEPTH_IN_WORD * 4
 )(
     // port A
     input clk_a,
@@ -48,26 +46,8 @@ module NewUnifiedMemory #(
     input [3:0] we_b,
     input [31:0] addr_b,
     input [MEMORY_WIDTH_IN_BIT-1:0] din_b,
-    output reg [MEMORY_WIDTH_IN_BIT-1:0] dout_b,
-    // external output io
-    input io_output_en,
-    output [7:0] io_output_data,
-    output [31:0] io_buffer_size_avai
+    output reg [MEMORY_WIDTH_IN_BIT-1:0] dout_b
 );
-
-    DirectionalBuffer #(
-        .BUFFER_BYTE_SIZE(OUTPUT_BUFFER_BYTE_SIZE)
-    ) io_output_buffer (
-
-        .clk(clk_a), // port A considered general use
-        .reset(reset_a),
-        // read/write interface
-        .input_en(!reset_a && en_a && (we_a != 0) && (addr_a == `OUTPUT_BYTES_ADDR)),
-        .input_data(din_a[7:0]),
-        .buffer_size_avai(io_buffer_size_avai),
-        .output_en(io_output_en),
-        .output_data(io_output_data)
-    );
 
     reg [MEMORY_WIDTH_IN_BIT-1:0] mem [0:MEMORY_DEPTH_IN_WORD-1];
     wire [29:0] addr_a_trunc = addr_a >> MEMORY_ADDR_TRUNCATE_BIT_NUMBER;
@@ -98,7 +78,7 @@ module NewUnifiedMemory #(
     always @(posedge clk_a) begin
         if (!reset_a && en_a)
             if (addr_a == `OUTPUT_BYTES_AVAI_ADDR)
-                dout_a <= io_buffer_size_avai;
+                ;
             else
                 dout_a <= port_a_next_dout; 
     end
@@ -106,7 +86,7 @@ module NewUnifiedMemory #(
     always @(posedge clk_b) begin
         if (!reset_b && en_b)
             if (addr_b == `OUTPUT_BYTES_AVAI_ADDR)
-                dout_b <= io_buffer_size_avai;
+                ;
             else
                 dout_b <= port_b_next_dout; 
     end

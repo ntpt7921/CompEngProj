@@ -1,8 +1,7 @@
 /*
 * NOTE: Functionality
 * 2 combinational read port, output value of reg specified with write value bypass
-* 1 synchronous/asynchronous write with specified width (1, 2 or 4 bytes)
-*   - when write smaller than register's size, 0-fill all upper bits
+* 1 synchronous/asynchronous write
 *   - written value is bypassed to the read output in case read_addr = write_addr
 * Register x0 is special, its value when read is always 0
 */

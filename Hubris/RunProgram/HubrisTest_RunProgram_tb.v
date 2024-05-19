@@ -40,7 +40,11 @@ module HubrisTest_RunProgram_tb();
         .we_b(we_b),
         .addr_b(addr_b),
         .din_b(din_b),
-        .dout_b(dout_b)
+        .dout_b(dout_b),
+        // external output io
+        .io_output_en(io_output_en),
+        .io_output_data(io_output_data),
+        .io_buffer_size_avai(io_buffer_size_avai)
     );
 
     NewUnifiedMemory #(
@@ -62,11 +66,7 @@ module HubrisTest_RunProgram_tb();
         .we_b(we_b),
         .addr_b(addr_b),
         .din_b(din_b),
-        .dout_b(dout_b),
-        // external output io
-        .io_output_en(io_output_en),
-        .io_output_data(io_output_data),
-        .io_buffer_size_avai(io_buffer_size_avai)
+        .dout_b(dout_b)
     );
 
     task get_binary_file_name;
@@ -216,7 +216,7 @@ module HubrisTest_RunProgram_tb();
         // output these info as JSON
         // - pc 
         // - register file
-        // - data memory
+        // write memory dump to file
         `STRING file_name;
         reg file_name_found;
 
@@ -258,8 +258,9 @@ module HubrisTest_RunProgram_tb();
     end
 
     // read output io buffer and print content
-    always @(*)
+    always @(*) begin
         io_output_en = (io_buffer_size_avai > 0);
+    end
 
     always @(posedge clk) begin 
         if (io_buffer_size_avai > 0)

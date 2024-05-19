@@ -1,6 +1,5 @@
-USE_MYSTDLIB = 0
 OBJS = main.o stdlib.o start.o
-CFLAGS = -O3 -mabi=ilp32 -march=rv32i -DTIME -DRISCV -DUSE_MYSTDLIB -ffreestanding -nostdlib
+CFLAGS = -O3 -mabi=ilp32 -march=rv32i -ffreestanding -nostdlib
 TOOLCHAIN_PREFIX = /opt/riscv/bin/riscv32-unknown-elf-
 
 run: main.hex
