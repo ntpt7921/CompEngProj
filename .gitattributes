@@ -1,0 +1,3 @@
+Hubris/Zynq/ filter=lfs diff=lfs merge=lfs -text
+Hubris/Zynq/Hubris.xpr.zip filter=lfs diff=lfs merge=lfs -text
+Hubris/Zynq/vitis_export_archive.ide.zip filter=lfs diff=lfs merge=lfs -text
