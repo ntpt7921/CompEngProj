@@ -459,7 +459,7 @@ module Hubris #(
         .clk(clk), // port A considered general use
         .reset(reset),
         // read/write interface
-        .input_en(!reset && en_a && (we_a != 0) && (addr_a == `OUTPUT_BYTES_ADDR)),
+        .input_en(!reset && (we_a != 0) && (addr_a == `OUTPUT_BYTES_ADDR)),
         .input_data(din_a[7:0]),
         .buffer_size_avai(io_buffer_size_avai),
         .output_en(io_output_en),

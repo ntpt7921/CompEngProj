@@ -25,10 +25,10 @@ module DirectionalBuffer #(
     reg [BUFFER_ADDR_SIZE-1:0] read_addr;
     reg [BUFFER_ADDR_SIZE-1:0] avai_count;
 
-    // reset logic
     integer i;
     always @(posedge clk) begin 
 
+        // reset logic
         if (reset) begin
             for (i = 0; i < BUFFER_BYTE_SIZE; i = i + 1) 
                 buffer[i] <= 0;
@@ -36,31 +36,28 @@ module DirectionalBuffer #(
             read_addr <= 0;
             avai_count <= 0;
         end
+        // buffer read/write logic
+        else begin
+            if (input_en && !output_en) begin
+                if (avai_count < BUFFER_BYTE_SIZE) begin
+                    buffer[write_addr] <= input_data;
+                    avai_count <= avai_count + 1;
+                    write_addr <= (write_addr + 1) % BUFFER_BYTE_SIZE;
+                end
+            end
 
-    end
+            if (!input_en && output_en) begin
+                if (avai_count > 0) begin
+                    avai_count <= avai_count - 1;
+                    read_addr <= (read_addr + 1) % BUFFER_BYTE_SIZE;
+                end
+            end
 
-    // buffer read/write logic
-    always @(posedge clk) begin 
-
-        if (input_en && !output_en) begin
-            if (avai_count < BUFFER_BYTE_SIZE) begin
+            if (input_en && output_en) begin
                 buffer[write_addr] <= input_data;
-                avai_count <= avai_count + 1;
+                read_addr <= (read_addr + 1) % BUFFER_BYTE_SIZE;
                 write_addr <= (write_addr + 1) % BUFFER_BYTE_SIZE;
             end
-        end
-
-        if (!input_en && output_en) begin
-            if (avai_count > 0) begin
-                avai_count <= avai_count - 1;
-                read_addr <= (read_addr + 1) % BUFFER_BYTE_SIZE;
-            end
-        end
-
-        if (input_en && output_en) begin
-            buffer[write_addr] <= input_data;
-            read_addr <= (read_addr + 1) % BUFFER_BYTE_SIZE;
-            write_addr <= (write_addr + 1) % BUFFER_BYTE_SIZE;
         end
 
     end
