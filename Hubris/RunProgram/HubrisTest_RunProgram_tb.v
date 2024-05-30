@@ -1,5 +1,9 @@
+`timescale 10ns/10ns
+
 `define STRING reg [8*64:1]
 `define EXECUTION_CLK_LIMIT 1000000
+`define CLK_PERIOD_NS 20
+`define UART_INTERNAL_CLK_PER_BAUD 54
 
 module HubrisTest_RunProgram_tb();
     reg clk;
@@ -18,13 +22,18 @@ module HubrisTest_RunProgram_tb();
     wire [31:0] din_b;
     wire [31:0] dout_b;
     // external output io
-    reg io_output_en;
-    wire [7:0] io_output_data;
-    wire [31:0] io_buffer_size_avai;
+    reg io_input_rx;
+    wire io_output_tx;
+    // for reading output uart from hubris
+    wire have_byte_rx;
+    wire [7:0] byte_rx;
 
     Hubris #(
         .REG_NUMBER(32), 
-        .INST_START_ADDR(32'b0)
+        .INST_START_ADDR(32'b0),
+        // IO spec
+        .OUTPUT_BUFFER_BYTE_SIZE(64),
+        .INPUT_BUFFER_BYTE_SIZE(16)
     ) dut (
         .clk(clk),
         .reset(reset),
@@ -42,9 +51,8 @@ module HubrisTest_RunProgram_tb();
         .din_b(din_b),
         .dout_b(dout_b),
         // external output io
-        .io_output_en(io_output_en),
-        .io_output_data(io_output_data),
-        .io_buffer_size_avai(io_buffer_size_avai)
+        .io_input_rx(io_input_rx),
+        .io_output_tx(io_output_tx)
     );
 
     NewUnifiedMemory #(
@@ -67,6 +75,15 @@ module HubrisTest_RunProgram_tb();
         .addr_b(addr_b),
         .din_b(din_b),
         .dout_b(dout_b)
+    );
+
+    uart_rx #(
+        .CLKS_PER_BIT(`UART_INTERNAL_CLK_PER_BAUD)
+    ) uart_reader (
+        .i_Clock(clk),
+        .i_Rx_Serial(io_output_tx),
+        .o_Rx_Done(have_byte_rx),
+        .o_Rx_Byte(byte_rx)
     );
 
     task get_binary_file_name;
@@ -258,13 +275,10 @@ module HubrisTest_RunProgram_tb();
     end
 
     // read output io buffer and print content
-    always @(*) begin
-        io_output_en = (io_buffer_size_avai > 0);
-    end
-
     always @(posedge clk) begin 
-        if (io_buffer_size_avai > 0)
-            $write("%c", io_output_data);
+        if (have_byte_rx)
+            $write("%c", byte_rx);
+            $fflush();
     end
 
     initial begin 
@@ -288,7 +302,7 @@ module HubrisTest_RunProgram_tb();
 
     initial begin
         clk = 0;
-        forever #1 clk = !clk;
+        forever #(`CLK_PERIOD_NS/2) clk = !clk;
     end
 
 endmodule

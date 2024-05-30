@@ -1,12 +1,12 @@
 .section .text
-	.globl entry_point
+	.globl start
 	.globl main
         .globl io_output_bytes_avai
         .globl io_output_bytes
 
-entry_point:
+start:
 	/* set stack pointer */
-	lui sp,(64*1024)>>12
+	lui sp,(32*1024)>>12
 
 	/* jump to main C code */
 	jal ra,main

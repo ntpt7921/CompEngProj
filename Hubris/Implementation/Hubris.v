@@ -13,23 +13,13 @@
 
 `define OUTPUT_BYTES_AVAI_ADDR  32'h8000_0000
 `define OUTPUT_BYTES_ADDR       32'h8000_0004
+`define INPUT_BYTES_AVAI_ADDR   32'h8000_0008
+`define INPUT_BYTES_ADDR        32'h8000_000C
 
 /*
 * NOTE: Functionality
-* Full Hubris design, use other module and connecting them with glue logic and pipeline register
-*/
-
-/*
-* NOTE:
-* this module also allows for memory-mapped IO, placed at addr 32'h8000_0000
-* onward. it work in tandem with NewUnifiedMemory
-*   - output takes 8 bytes (2 words), in order:
-*       - output_bytes_avai (4 bytes) - 32'h8000_0000: can be read, contains
-*       current number of available output buffer bytes. writing to this have no
-*       effect
-*       - output_bytes (4 bytes) - 32'h8000_0004: each write to this (at any width)
-*       store a byte of output data situated at the least significant byte of
-*       the write data. read to this return undefined value
+* Full Hubris design, use other module and connecting them with glue logic and pipeline register.
+* It also have memory-mapped IO supported by the SimpleIO module
 */
 
 module Hubris #(
@@ -38,7 +28,8 @@ module Hubris #(
     parameter WORD_WIDTH_IN_BIT = WORD_WIDTH_IN_BYTE * 8,
     parameter INST_START_ADDR = 32'b0,
     // IO spec
-    parameter OUTPUT_BUFFER_BYTE_SIZE = 32 
+    parameter OUTPUT_BUFFER_BYTE_SIZE = 256,
+    parameter INPUT_BUFFER_BYTE_SIZE = 16 
 )(
     input clk,
     input reset,
@@ -56,10 +47,23 @@ module Hubris #(
     output [WORD_WIDTH_IN_BIT-1:0] din_b,
     input [WORD_WIDTH_IN_BIT-1:0] dout_b,
     // external output io
-    input io_output_en,
-    output [7:0] io_output_data,
-    output [31:0] io_buffer_size_avai
+    input io_input_rx,
+    output io_output_tx
 );
+    function is_mem_io_addr;
+        input [WORD_WIDTH_IN_BIT-1:0] addr;
+        begin 
+            is_mem_io_addr = 0;
+            case (addr)
+                `OUTPUT_BYTES_AVAI_ADDR, 
+                    `OUTPUT_BYTES_ADDR, 
+                    `INPUT_BYTES_AVAI_ADDR, 
+                    `INPUT_BYTES_ADDR:
+                        is_mem_io_addr = 1;
+                default: is_mem_io_addr = 0;
+            endcase        
+        end
+    endfunction
 
     // IF1+2 section
     // --------------------------------------------------------------------------------------------
@@ -249,12 +253,7 @@ module Hubris #(
     // MEM section
     // --------------------------------------------------------------------------------------------
     wire [WORD_WIDTH_IN_BIT-1:0] mem_read_data; // data read from mem, latched
-    // memory mapped io, read avai buffer space
-    reg [WORD_WIDTH_IN_BIT-1:0] mem_io_buffer_size_avai_port_a;
-    always @(posedge clk) begin
-        if (addr_a == `OUTPUT_BYTES_AVAI_ADDR)
-            mem_io_buffer_size_avai_port_a <= io_buffer_size_avai;
-    end
+    wire [WORD_WIDTH_IN_BIT-1:0] io_read_data; // memory mapped io, read avai buffer space
     
     // MEM-WB pipeline
     // --------------------------------------------------------------------------------------------
@@ -273,9 +272,8 @@ module Hubris #(
     reg [WORD_WIDTH_IN_BIT-1:0] mem_wb_pl_ex_calculated_pc;
 
     assign mem_wb_pl_read_data = 
-        (mem_wb_pl_alu_result == `OUTPUT_BYTES_AVAI_ADDR) 
-        ? mem_io_buffer_size_avai_port_a 
-        : mem_read_data;
+        (is_mem_io_addr(mem_wb_pl_alu_result))
+        ? io_read_data : mem_read_data;
 
     always @(posedge clk) begin 
         mem_wb_pl_funct3 <= ex_mem_pl_funct3;
@@ -317,7 +315,7 @@ module Hubris #(
     // instatiate all the submodules
     // --------------------------------------------------------------------------------------------
 
-    assign en_a = (addr_a == `OUTPUT_BYTES_ADDR) ? 1'b0 : 1'b1; // disable if accessing io
+    assign en_a = 1'b1;
     assign we_a = ex_mem_pl_datamem_write_en 
         ? (ex_mem_pl_datamem_write_width << ex_mem_pl_alu_result[1:0]) 
         : 4'b0;
@@ -330,37 +328,6 @@ module Hubris #(
     assign addr_b = if1_pc;
     assign din_b = 32'b0;
     assign if2_inst = dout_b;
-
-    /*
-    // using the flat addressing NewUnifiedMemory
-    NewUnifiedMemory #(
-        .MEMORY_WIDTH_IN_BYTE(WORD_WIDTH_IN_BYTE),
-        .MEMORY_DEPTH_IN_WORD(1048576) // 4MiB
-    ) unified_memory_instance (
-        // port A - general use
-        .clk_a(clk),
-        .reset_a(reset),
-        .en_a(1'b1),
-        .we_a(ex_mem_pl_datamem_write_en 
-            ? (ex_mem_pl_datamem_write_width << ex_mem_pl_alu_result[1:0])
-            : 4'b0),
-        .addr_a(ex_mem_pl_alu_result),
-        .din_a(ex_mem_pl_rs2_data << (ex_mem_pl_alu_result[1:0] * 8)),
-        .dout_a(mem_read_data),
-        // port B - instruction fetch
-        .clk_b(clk),
-        .reset_b(reset),
-        .en_b(!stall_id_if_pl || chg_addr),
-        .we_b(4'b0),
-        .addr_b(if1_pc),
-        .din_b(32'b0),
-        .dout_b(if2_inst),
-        // external output io
-        .io_output_en(io_output_en),
-        .io_output_data(io_output_data),
-        .io_buffer_size_avai(io_buffer_size_avai)
-    );
-    */
 
     Orchestrator #(
         .INST_WIDTH_IN_BIT(WORD_WIDTH_IN_BIT)
@@ -452,18 +419,25 @@ module Hubris #(
         .read_data_ext(wb_read_data_ext)
     );
 
-    DirectionalBuffer #(
-        .BUFFER_BYTE_SIZE(OUTPUT_BUFFER_BYTE_SIZE)
-    ) io_output_buffer (
-
-        .clk(clk), // port A considered general use
+    SimpleIO #(
+        .OUTPUT_BUFFER_BYTE_SIZE(OUTPUT_BUFFER_BYTE_SIZE),
+        .INPUT_BUFFER_BYTE_SIZE(INPUT_BUFFER_BYTE_SIZE),
+        .WORD_WIDTH_IN_BYTE(4),
+        .UART_INTERNAL_CLK_PER_BAUD(54) // value for 921600 baud, 50MHz internal clk
+    ) simple_io_instance (
+        .clk(clk),
         .reset(reset),
-        // read/write interface
-        .input_en(!reset && (we_a != 0) && (addr_a == `OUTPUT_BYTES_ADDR)),
-        .input_data(din_a[7:0]),
-        .buffer_size_avai(io_buffer_size_avai),
-        .output_en(io_output_en),
-        .output_data(io_output_data)
+        // memory port interface
+        .en_a(en_a),
+        .we_a(we_a),
+        .addr_a(addr_a),
+        .din_a(din_a),
+        .dout_a(io_read_data),
+        // signal for busy tx
+        .busy_tx(),
+        // external io
+        .io_input_rx(io_input_rx),
+        .io_output_tx(io_output_tx)
     );
 
 endmodule

@@ -45,11 +45,20 @@ char *malloc(int size) {
   return p;
 }
 
-static void printf_c(int c) { *((volatile int *)0x80000004) = c; }
+static void printf_c(int c) {
+  volatile uint32_t buffer_size_left;
+
+  // busy loop to wait for uart buffer
+  do {
+    buffer_size_left = *((volatile uint32_t *)0x80000000);
+  } while (buffer_size_left == 0);
+
+  *((volatile int *)0x80000004) = c;
+}
 
 static void printf_s(char *p) {
   while (*p)
-    *((volatile int *)0x80000004) = *(p++);
+    printf_c(*(p++));
 }
 
 static void printf_d(int val) {

@@ -11,6 +11,8 @@ SECTIONS
 
   io_output_bytes_avai = 0x80000000;
   io_output_bytes = 0x80000004;
+  io_input_bytes_avai = 0x80000008;
+  io_input_bytes = 0x8000000c;
 
   end = .;
 }

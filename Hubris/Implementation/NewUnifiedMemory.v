@@ -1,6 +1,3 @@
-`define OUTPUT_BYTES_AVAI_ADDR  32'h8000_0000
-`define OUTPUT_BYTES_ADDR       32'h8000_0004
-
 /*
 * NOTE:
 * this module implements the unified memory with flat address space with no
@@ -8,19 +5,6 @@
 * clock edge to complete.
 *   - 1 read/write port (B) for instruction fetch, normally never write
 *   - 1 read/write port (A) for general use
-*/
-
-/*
-* NOTE:
-* this module also allows for memory-mapped IO, placed at addr 32'h8000_0000
-* onward. it work in tandem with Hubris
-*   - output takes 8 bytes (2 words), in order:
-*       - output_bytes_avai (4 bytes) - 32'h8000_0000: can be read, contains
-*       current number of available output buffer bytes. writing to this have no
-*       effect
-*       - output_bytes (4 bytes) - 32'h8000_0004: each write to this (at any width)
-*       store a byte of output data situated at the least significant byte of
-*       the write data. read to this return undefined value
 */
 
 module NewUnifiedMemory #(
@@ -77,18 +61,12 @@ module NewUnifiedMemory #(
 
     always @(posedge clk_a) begin
         if (!reset_a && en_a)
-            if (addr_a == `OUTPUT_BYTES_AVAI_ADDR)
-                ;
-            else
-                dout_a <= port_a_next_dout; 
+            dout_a <= port_a_next_dout; 
     end
 
     always @(posedge clk_b) begin
         if (!reset_b && en_b)
-            if (addr_b == `OUTPUT_BYTES_AVAI_ADDR)
-                ;
-            else
-                dout_b <= port_b_next_dout; 
+            dout_b <= port_b_next_dout; 
     end
 
     // write part
@@ -101,12 +79,7 @@ module NewUnifiedMemory #(
     always @(posedge clk_a) begin
 
         if (!reset_a && en_a && (we_a != 0)) begin
-
-            if (addr_a == `OUTPUT_BYTES_ADDR)
-                ; // do nothing
-            else 
-                mem[addr_a_trunc] <= word_a;
-
+            mem[addr_a_trunc] <= word_a;
         end
 
     end
@@ -120,12 +93,7 @@ module NewUnifiedMemory #(
     always @(posedge clk_b) begin
 
         if (!reset_b && en_b && (we_b != 0)) begin
-
-            if (addr_b == `OUTPUT_BYTES_ADDR)
-                ; // do nothing
-            else 
-                mem[addr_b_trunc] <= word_b;
-
+            mem[addr_b_trunc] <= word_b;
         end
 
     end
