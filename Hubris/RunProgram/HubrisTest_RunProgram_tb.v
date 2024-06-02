@@ -4,6 +4,7 @@
 `define EXECUTION_CLK_LIMIT 1000000
 `define CLK_PERIOD_NS 20
 `define UART_INTERNAL_CLK_PER_BAUD 54
+`define BAUD_PERIOD_NS (`CLK_PERIOD_NS * `UART_INTERNAL_CLK_PER_BAUD)
 
 module HubrisTest_RunProgram_tb();
     reg clk;
@@ -257,6 +258,28 @@ module HubrisTest_RunProgram_tb();
         end
     endtask
 
+    // Takes in input byte and serializes it 
+    task write_uart_to_hubris;
+        input [7:0] data_byte;
+        integer     i;
+        begin
+            // Send Start Bit
+            io_input_rx <= 1'b0;
+            #(`BAUD_PERIOD_NS);
+
+            // Send Data Byte
+            for (i = 0; i < 8; i = i + 1)
+            begin
+                io_input_rx <= data_byte[i];
+                #(`BAUD_PERIOD_NS);
+            end
+
+            // Send Stop Bit
+            io_input_rx <= 1'b1;
+            #(`BAUD_PERIOD_NS);
+        end
+    endtask
+
     // count clock cycle
     reg is_running;
     integer clk_count;
@@ -290,6 +313,12 @@ module HubrisTest_RunProgram_tb();
         invoke_reset();
         load_memory();
  
+        write_uart_to_hubris("h");
+        write_uart_to_hubris("e");
+        write_uart_to_hubris("l");
+        write_uart_to_hubris("l");
+        write_uart_to_hubris("o");
+        write_uart_to_hubris("\n");
         wait(halt == 1); // wait for halt
         is_running = 0;
 

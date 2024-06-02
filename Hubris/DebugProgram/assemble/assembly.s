@@ -2,38 +2,35 @@
 	.globl start
         .globl io_output_bytes_avai
         .globl io_output_bytes
+        .globl io_input_bytes_avai
+        .globl io_input_bytes
 
 start:
-	/* print "START\n" */
-        la a0, io_output_bytes
-        la s0, io_output_bytes_avai
-	addi a1,zero,'S'
-	addi a2,zero,'T'
-	addi a3,zero,'A'
-	addi a4,zero,'R'
-	addi a5,zero,'\n'
-	sw a1,0(a0)
-        lw s1,0(s0)
-
-	sw a2,0(a0)
-        lw s2,0(s0)
-
-	sw a3,0(a0)
-        lw s3,0(s0)
-
-	sw a4,0(a0)
-        lw s4,0(s0)
-
-	sw a2,0(a0)
-	sw a5,0(a0)
-        lw s5,0(s0)
-
 	/* set stack pointer */
 	lui sp,(32*1024)>>12
+
+        call wait_read_print_back_byte_from_uart
+        call wait_read_print_back_byte_from_uart
+        call wait_read_print_back_byte_from_uart
+        call wait_read_print_back_byte_from_uart
+        call wait_read_print_back_byte_from_uart
+        call wait_read_print_back_byte_from_uart
 
         call wait_for_uart
 	/* trap */
 	unimp
+
+wait_read_print_back_byte_from_uart:
+    la a0, io_input_bytes
+    la a1, io_input_bytes_avai
+    la a2, io_output_bytes
+    li t0, 16
+.L3:
+    lw t1, 0(a1) 
+    beq t1, t0, .L3 # if input buffer still have not receive, loop
+    lw t1, 0(a0) # t1 now have received byte
+    sw t1, 0(a2) # print received byte
+    ret
 
 wait_for_uart:
     la t0, io_output_bytes_avai

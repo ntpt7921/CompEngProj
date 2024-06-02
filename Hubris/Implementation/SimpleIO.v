@@ -81,7 +81,7 @@ module SimpleIO #(
         .input_en(have_byte_rx),
         .input_data(byte_rx),
         .buffer_size_avai(input_buffer_avai),
-        .output_en(!reset && en_a  && (addr_a == `INPUT_BYTES_ADDR)),
+        .output_en(!reset && en_a && (addr_a == `INPUT_BYTES_ADDR)),
         .output_data(input_byte_value)
     );
 

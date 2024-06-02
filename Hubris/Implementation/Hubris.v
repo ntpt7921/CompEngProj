@@ -314,7 +314,6 @@ module Hubris #(
 
     // instatiate all the submodules
     // --------------------------------------------------------------------------------------------
-
     assign en_a = 1'b1;
     assign we_a = ex_mem_pl_datamem_write_en 
         ? (ex_mem_pl_datamem_write_width << ex_mem_pl_alu_result[1:0]) 
@@ -428,7 +427,7 @@ module Hubris #(
         .clk(clk),
         .reset(reset),
         // memory port interface
-        .en_a(en_a),
+        .en_a(is_mem_io_addr(ex_mem_pl_alu_result)),
         .we_a(we_a),
         .addr_a(addr_a),
         .din_a(din_a),
