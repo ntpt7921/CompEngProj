@@ -9,11 +9,7 @@ start:
 	/* set stack pointer */
 	lui sp,(32*1024)>>12
 
-        call wait_read_print_back_byte_from_uart
-        call wait_read_print_back_byte_from_uart
-        call wait_read_print_back_byte_from_uart
-        call wait_read_print_back_byte_from_uart
-        call wait_read_print_back_byte_from_uart
+        # loop forever, never return from this
         call wait_read_print_back_byte_from_uart
 
         call wait_for_uart
@@ -30,6 +26,7 @@ wait_read_print_back_byte_from_uart:
     beq t1, t0, .L3 # if input buffer still have not receive, loop
     lw t1, 0(a0) # t1 now have received byte
     sw t1, 0(a2) # print received byte
+    j .L3
     ret
 
 wait_for_uart:

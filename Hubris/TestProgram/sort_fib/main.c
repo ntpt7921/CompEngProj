@@ -46,12 +46,12 @@ int fib_res[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 int sort_res[10] = {1, 4, 2, 9, 8, 5, 7, 3, 0, 6};
 
 int main() {
-  printf("START\n");
+  printf("START\r\n");
 
   printf("fib_res before: ");
   for (int i = 0; i < 10; i++)
     printf("%d ", fib_res[i]);
-  printf("\n");
+  printf("\r\n");
 
   for (int i = 0; i < 10; i++)
     fib_res[i] = fibonacci(i);
@@ -59,21 +59,21 @@ int main() {
   printf("fib_res after: ");
   for (int i = 0; i < 10; i++)
     printf("%d ", fib_res[i]);
-  printf("\n");
+  printf("\r\n");
 
   printf("sort_res before: ");
   for (int i = 0; i < 10; i++)
     printf("%d ", sort_res[i]);
-  printf("\n");
+  printf("\r\n");
 
   sort(sort_res, sizeof(sort_res) / sizeof(int));
 
   printf("sort_res after: ");
   for (int i = 0; i < 10; i++)
     printf("%d ", sort_res[i]);
-  printf("\n");
+  printf("\r\n");
 
-  printf("DONE\n");
+  printf("DONE\r\n");
 
   return 0;
 }

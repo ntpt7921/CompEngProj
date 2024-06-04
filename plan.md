@@ -66,5 +66,5 @@ Requirements:
     - Do integration test (detail available after design)
 - [x] Benchmark
     - Detail available after design
-- [ ] Implement in FPGA
+- [x] Implement in FPGA
 

@@ -3,7 +3,7 @@
 `define STRING reg [8*64:1]
 `define EXECUTION_CLK_LIMIT 1000000
 `define CLK_PERIOD_NS 20
-`define UART_INTERNAL_CLK_PER_BAUD 54
+`define UART_INTERNAL_CLK_PER_BAUD 4
 `define BAUD_PERIOD_NS (`CLK_PERIOD_NS * `UART_INTERNAL_CLK_PER_BAUD)
 
 module HubrisTest_RunProgram_tb();
@@ -34,7 +34,8 @@ module HubrisTest_RunProgram_tb();
         .INST_START_ADDR(32'b0),
         // IO spec
         .OUTPUT_BUFFER_BYTE_SIZE(64),
-        .INPUT_BUFFER_BYTE_SIZE(16)
+        .INPUT_BUFFER_BYTE_SIZE(16),
+        .UART_INTERNAL_CLK_PER_BAUD(`UART_INTERNAL_CLK_PER_BAUD)
     ) dut (
         .clk(clk),
         .reset(reset),

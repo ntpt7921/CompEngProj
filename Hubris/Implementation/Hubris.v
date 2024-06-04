@@ -29,7 +29,8 @@ module Hubris #(
     parameter INST_START_ADDR = 32'b0,
     // IO spec
     parameter OUTPUT_BUFFER_BYTE_SIZE = 256,
-    parameter INPUT_BUFFER_BYTE_SIZE = 16 
+    parameter INPUT_BUFFER_BYTE_SIZE = 16,
+    parameter UART_INTERNAL_CLK_PER_BAUD = 54
 )(
     input clk,
     input reset,
@@ -281,7 +282,6 @@ module Hubris #(
         // control signal generation
         mem_wb_pl_regfile_write_width <= ex_mem_pl_regfile_write_width;
         mem_wb_pl_regfile_write_en <= ex_mem_pl_regfile_write_en;
-        mem_wb_pl_regfile_write_width <= ex_mem_pl_regfile_write_width;
         mem_wb_pl_regfile_write_data <= ex_mem_pl_regfile_write_data;
         // command parsing
         mem_wb_pl_parse_rd <= ex_mem_pl_parse_rd;
@@ -422,12 +422,15 @@ module Hubris #(
         .OUTPUT_BUFFER_BYTE_SIZE(OUTPUT_BUFFER_BYTE_SIZE),
         .INPUT_BUFFER_BYTE_SIZE(INPUT_BUFFER_BYTE_SIZE),
         .WORD_WIDTH_IN_BYTE(4),
-        .UART_INTERNAL_CLK_PER_BAUD(54) // value for 921600 baud, 50MHz internal clk
+        .UART_INTERNAL_CLK_PER_BAUD(UART_INTERNAL_CLK_PER_BAUD) // value for 921600 baud, 50MHz internal clk
     ) simple_io_instance (
         .clk(clk),
         .reset(reset),
         // memory port interface
-        .en_a(is_mem_io_addr(ex_mem_pl_alu_result)),
+        .en_a(
+            is_mem_io_addr(ex_mem_pl_alu_result) 
+            && ex_mem_pl_regfile_write_data == `REGFILE_DATA_FROM_DATAMEM
+        ),
         .we_a(we_a),
         .addr_a(addr_a),
         .din_a(din_a),

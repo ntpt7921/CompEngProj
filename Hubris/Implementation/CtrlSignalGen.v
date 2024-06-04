@@ -265,7 +265,7 @@ module CtrlSignalGen (
                 // RegisterFile control
                 regfile_write_en = 0;
                 regfile_write_width = 4'bx;
-                regfile_write_data = 2'bx;
+                regfile_write_data = `REGFILE_DATA_FROM_DATAMEM;
                 // DataMemory control
                 datamem_write_en = 1;
                 datamem_write_width = load_store_width_or_type_from_funct3(funct3);
