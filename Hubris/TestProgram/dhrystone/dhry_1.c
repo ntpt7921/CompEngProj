@@ -120,7 +120,7 @@ main()
   {
     // int n;
     // scanf ("%d", &n);
-    Number_Of_Runs = 1000;
+    Number_Of_Runs = 100;
   }
   printf("\r\n");
 
